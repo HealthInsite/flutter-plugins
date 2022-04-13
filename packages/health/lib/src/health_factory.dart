@@ -158,16 +158,18 @@ class HealthFactory {
           (weights[i].value as NumericHealthValue).numericValue.toDouble() /
               (h * h);
       final x = HealthDataPoint(
-          NumericHealthValue(bmiValue),
-          dataType,
-          unit,
-          weights[i].dateFrom,
-          weights[i].dateTo,
-          _platformType,
-          _deviceId!,
-          '',
-          '',
-          !includeManualEntry);
+        NumericHealthValue(bmiValue),
+        dataType,
+        unit,
+        weights[i].dateFrom,
+        weights[i].dateTo,
+        _platformType,
+        _deviceId!,
+        '',
+        '',
+        !includeManualEntry,
+        null,
+      );
 
       bmiHealthPoints.add(x);
     }
@@ -433,8 +435,31 @@ class HealthFactory {
       final String sourceId = e["source_id"];
       final String sourceName = e["source_name"];
       final bool? isManualEntry = e["is_manual_entry"];
-      return HealthDataPoint(value, dataType, unit, from, to, _platformType,
-          device, sourceId, sourceName, isManualEntry);
+
+      // Set WorkoutSummary
+      WorkoutSummary? workoutSummary;
+      if (e["total_distance"] != null ||
+          e["total_energy_burned"] != null ||
+          e["total_energy_steps"] != null) {
+        workoutSummary = WorkoutSummary(
+          e["total_distance"] ?? 0,
+          e["total_energy_burned"] ?? 0,
+          e["total_energy_steps"] ?? 0,
+        );
+      }
+      return HealthDataPoint(
+        value,
+        dataType,
+        unit,
+        from,
+        to,
+        _platformType,
+        device,
+        sourceId,
+        sourceName,
+        isManualEntry,
+        workoutSummary,
+      );
     }).toList();
 
     return list;
