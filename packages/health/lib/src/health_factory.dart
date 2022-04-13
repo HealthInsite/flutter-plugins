@@ -302,7 +302,25 @@ class HealthFactory {
     return removeDuplicates(dataPoints);
   }
 
-  /// Prepares a query, i.e. checks if the types are available, etc.
+  /// Fetch a list of health data points based on [types].
+  Future<List<HealthDataPoint>> getHealthIntervalDataFromTypes(
+      DateTime startDate,
+      DateTime endDate,
+      List<HealthDataType> types,
+      int interval,
+      {includeManualEntry: true}) async {
+    List<HealthDataPoint> dataPoints = [];
+
+    for (var type in types) {
+      final result = await _prepareIntervalQuery(
+          startDate, endDate, type, interval, includeManualEntry);
+      dataPoints.addAll(result);
+    }
+
+    return removeDuplicates(dataPoints);
+  }
+
+  /// Prepares an interval query, i.e. checks if the types are available, etc.
   Future<List<HealthDataPoint>> _prepareQuery(
       DateTime startTime,
       DateTime endTime,
@@ -325,6 +343,17 @@ class HealthFactory {
       return _computeAndroidBMI(startTime, endTime, includeManualEntry);
     }
     return await _dataQuery(startTime, endTime, dataType, includeManualEntry);
+  }
+
+  /// Prepares an interval query, i.e. checks if the types are available, etc.
+  Future<List<HealthDataPoint>> _prepareIntervalQuery(
+      DateTime startDate,
+      DateTime endDate,
+      HealthDataType dataType,
+      int interval,
+      bool includeManualEntry) async {
+    return await _dataIntervalQuery(
+        startDate, endDate, dataType, interval, includeManualEntry);
   }
 
   /// The main function for fetching health data
@@ -354,6 +383,34 @@ class HealthFactory {
     } else {
       return <HealthDataPoint>[];
     }
+  }
+
+  /// function for fetching statistic health data
+  Future<List<HealthDataPoint>> _dataIntervalQuery(
+      DateTime startDate,
+      DateTime endDate,
+      HealthDataType dataType,
+      int interval,
+      bool includeManualEntry) async {
+    final args = <String, dynamic>{
+      'dataTypeKey': _enumToString(dataType),
+      'startDate': startDate.millisecondsSinceEpoch,
+      'endDate': endDate.millisecondsSinceEpoch,
+      'interval': interval,
+      'includeManualEntry': includeManualEntry
+    };
+
+    final fetchedDataPoints =
+        await _channel.invokeMethod('getIntervalData', args);
+    if (fetchedDataPoints != null) {
+      final mesg = <String, dynamic>{
+        "dataType": dataType,
+        "dataPoints": fetchedDataPoints,
+        "deviceId": _deviceId!,
+      };
+      return _parse(mesg);
+    }
+    return <HealthDataPoint>[];
   }
 
   static List<HealthDataPoint> _parse(Map<String, dynamic> message) {
