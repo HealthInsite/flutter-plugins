@@ -140,16 +140,16 @@ class HealthFactory {
 
   /// Calculate the BMI using the last observed height and weight values.
   Future<List<HealthDataPoint>> _computeAndroidBMI(
-      DateTime startDate, DateTime endDate) async {
-    List<HealthDataPoint> heights =
-        await _prepareQuery(startDate, endDate, HealthDataType.HEIGHT);
+      DateTime startDate, DateTime endDate, bool includeManualEntry) async {
+    List<HealthDataPoint> heights = await _prepareQuery(
+        startDate, endDate, HealthDataType.HEIGHT, includeManualEntry);
 
     if (heights.isEmpty) {
       return [];
     }
 
-    List<HealthDataPoint> weights =
-        await _prepareQuery(startDate, endDate, HealthDataType.WEIGHT);
+    List<HealthDataPoint> weights = await _prepareQuery(
+        startDate, endDate, HealthDataType.WEIGHT, includeManualEntry);
 
     double h = heights.last.value.toDouble();
 
@@ -214,14 +214,13 @@ class HealthFactory {
 
   /// Fetch a list of health data points based on [types].
   Future<List<HealthDataPoint>> getHealthDataFromTypes(
-    DateTime startDate,
-    DateTime endDate,
-    List<HealthDataType> types,
-  ) async {
+      DateTime startDate, DateTime endDate, List<HealthDataType> types,
+      {includeManualEntry: true}) async {
     List<HealthDataPoint> dataPoints = [];
 
     for (var type in types) {
-      final result = await _prepareQuery(startDate, endDate, type);
+      final result =
+          await _prepareQuery(startDate, endDate, type, includeManualEntry);
       dataPoints.addAll(result);
     }
 
@@ -235,7 +234,10 @@ class HealthFactory {
 
   /// Prepares a query, i.e. checks if the types are available, etc.
   Future<List<HealthDataPoint>> _prepareQuery(
-      DateTime startDate, DateTime endDate, HealthDataType dataType) async {
+      DateTime startDate,
+      DateTime endDate,
+      HealthDataType dataType,
+      bool includeManualEntry) async {
     // Ask for device ID only once
     _deviceId ??= _platformType == PlatformType.ANDROID
         ? (await _deviceInfo.androidInfo).androidId
@@ -250,18 +252,19 @@ class HealthFactory {
     // If BodyMassIndex is requested on Android, calculate this manually
     if (dataType == HealthDataType.BODY_MASS_INDEX &&
         _platformType == PlatformType.ANDROID) {
-      return _computeAndroidBMI(startDate, endDate);
+      return _computeAndroidBMI(startDate, endDate, includeManualEntry);
     }
-    return await _dataQuery(startDate, endDate, dataType);
+    return await _dataQuery(startDate, endDate, dataType, includeManualEntry);
   }
 
   /// The main function for fetching health data
-  Future<List<HealthDataPoint>> _dataQuery(
-      DateTime startDate, DateTime endDate, HealthDataType dataType) async {
+  Future<List<HealthDataPoint>> _dataQuery(DateTime startDate, DateTime endDate,
+      HealthDataType dataType, bool includeManualEntry) async {
     final args = <String, dynamic>{
       'dataTypeKey': _enumToString(dataType),
       'startDate': startDate.millisecondsSinceEpoch,
-      'endDate': endDate.millisecondsSinceEpoch
+      'endDate': endDate.millisecondsSinceEpoch,
+      'includeManualEntry': includeManualEntry
     };
 
     final fetchedDataPoints = await _channel.invokeMethod('getData', args);
