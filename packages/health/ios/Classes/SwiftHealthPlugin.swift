@@ -399,7 +399,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "date_from": Int(sample.startDate.timeIntervalSince1970 * 1000),
                         "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
-                        "source_name": sample.sourceRevision.source.name
+                        "source_name": sample.sourceRevision.source.name,
+                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
                     ]
                 }
                 DispatchQueue.main.async {
@@ -438,7 +439,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "date_from": Int(sample.startDate.timeIntervalSince1970 * 1000),
                         "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
-                        "source_name": sample.sourceRevision.source.name
+                        "source_name": sample.sourceRevision.source.name,
+                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
                     ]
                 }
                 DispatchQueue.main.async {
@@ -458,10 +460,10 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "date_from": Int(sample.startDate.timeIntervalSince1970 * 1000),
                         "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
-                        "source_name": sample.sourceRevision.source.name
+                        "source_name": sample.sourceRevision.source.name,
+                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
                     ]
                 }
-                
                 DispatchQueue.main.async {
                     result(dictionaries)
                 }
@@ -500,7 +502,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         
         HKHealthStore().execute(query)
     }
-    
+
     func getTotalStepsInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
