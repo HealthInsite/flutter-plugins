@@ -13,18 +13,21 @@ class HealthDataPoint {
   String _sourceId;
   String _sourceName;
   bool? _isManualEntry;
+  WorkoutSummary? _workoutSummary;
 
   HealthDataPoint(
-      this._value,
-      this._type,
-      this._unit,
-      this._dateFrom,
-      this._dateTo,
-      this._platform,
-      this._deviceId,
-      this._sourceId,
-      this._sourceName,
-      this._isManualEntry) {
+    this._value,
+    this._type,
+    this._unit,
+    this._dateFrom,
+    this._dateTo,
+    this._platform,
+    this._deviceId,
+    this._sourceId,
+    this._sourceName,
+    this._isManualEntry,
+    this._workoutSummary,
+  ) {
     // set the value to minutes rather than the category
     // returned by the native API
     if (type == HealthDataType.MINDFULNESS ||
@@ -47,19 +50,22 @@ class HealthDataPoint {
 
   /// Converts a json object to the [HealthDataPoint]
   factory HealthDataPoint.fromJson(json) => HealthDataPoint(
-      json['value'],
-      HealthDataTypeJsonValue.keys.toList()[
-          HealthDataTypeJsonValue.values.toList().indexOf(json['data_type'])],
-      HealthDataUnitJsonValue.keys.toList()[
-          HealthDataUnitJsonValue.values.toList().indexOf(json['unit'])],
-      DateTime.parse(json['date_from']),
-      DateTime.parse(json['date_to']),
-      PlatformTypeJsonValue.keys.toList()[
-          PlatformTypeJsonValue.values.toList().indexOf(json['platform_type'])],
-      json['platform_type'],
-      json['source_id'],
-      json['source_name'],
-      json['is_manual_entry']);
+        json['value'],
+        HealthDataTypeJsonValue.keys.toList()[
+            HealthDataTypeJsonValue.values.toList().indexOf(json['data_type'])],
+        HealthDataUnitJsonValue.keys.toList()[
+            HealthDataUnitJsonValue.values.toList().indexOf(json['unit'])],
+        DateTime.parse(json['date_from']),
+        DateTime.parse(json['date_to']),
+        PlatformTypeJsonValue.keys.toList()[PlatformTypeJsonValue.values
+            .toList()
+            .indexOf(json['platform_type'])],
+        json['platform_type'],
+        json['source_id'],
+        json['source_name'],
+        json['is_manual_entry'],
+        WorkoutSummary.fromJson(json['workout_summary']),
+      );
 
   /// Converts the [HealthDataPoint] to a json object
   Map<String, dynamic> toJson() => {
@@ -72,7 +78,8 @@ class HealthDataPoint {
         'device_id': deviceId,
         'source_id': sourceId,
         'source_name': sourceName,
-        'is_manual_entry': isManualEntry
+        'is_manual_entry': isManualEntry,
+        'workout_summary': workoutSummary?.toJson(),
       };
 
   @override
@@ -85,7 +92,8 @@ class HealthDataPoint {
       'platform: $platform, '
       'sourceId: $sourceId, '
       'sourceName: $sourceName, '
-      'isManualEntry: $isManualEntry';
+      'isManualEntry: $isManualEntry, '
+      'workoutSummary: ${workoutSummary?.toString()}';
 
   /// The quantity value of the data point
   num get value => _value;
@@ -122,6 +130,9 @@ class HealthDataPoint {
 
   /// The user entered state of the data point.
   bool? get isManualEntry => _isManualEntry;
+
+  /// The summary of the workout data point.
+  WorkoutSummary? get workoutSummary => _workoutSummary;
 
   @override
   bool operator ==(Object o) {

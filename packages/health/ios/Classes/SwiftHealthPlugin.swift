@@ -313,7 +313,9 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
                         "source_name": sample.sourceRevision.source.name,
-                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
+                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil,
+                        "total_distance": sample.totalDistance != nil ? Int(sample.totalDistance!.doubleValue(for: HKUnit.meter())) : 0,
+                        "total_energy_burned": sample.totalEnergyBurned != nil ? Int(sample.totalEnergyBurned!.doubleValue(for: HKUnit.kilocalorie())) : 0
                     ]
                 }
                 
