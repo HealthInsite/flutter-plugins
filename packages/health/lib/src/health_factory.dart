@@ -285,7 +285,7 @@ class HealthFactory {
   /// Fetch a list of health data points based on [types].
   Future<List<HealthDataPoint>> getHealthDataFromTypes(
       DateTime startTime, DateTime endTime, List<HealthDataType> types,
-      {includeManualEntry: true}) async {
+      {bool includeManualEntry: true}) async {
     List<HealthDataPoint> dataPoints = [];
 
     for (var type in types) {
