@@ -249,7 +249,7 @@ class HealthFactory {
       DateTime endDate,
       List<HealthDataType> types,
       int interval,
-      {includeManualEntry: true}) async {
+      {bool includeManualEntry: true}) async {
     List<HealthDataPoint> dataPoints = [];
 
     for (var type in types) {
