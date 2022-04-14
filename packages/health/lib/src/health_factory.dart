@@ -354,6 +354,17 @@ class HealthFactory {
       HealthDataType dataType,
       int interval,
       bool includeManualEntry) async {
+    // Ask for device ID only once
+    _deviceId ??= _platformType == PlatformType.ANDROID
+        ? (await _deviceInfo.androidInfo).androidId
+        : (await _deviceInfo.iosInfo).identifierForVendor;
+
+    // If not implemented on platform, throw an exception
+    if (!isDataTypeAvailable(dataType)) {
+      throw HealthException(
+          dataType, 'Not available on platform $_platformType');
+    }
+
     return await _dataIntervalQuery(
         startDate, endDate, dataType, interval, includeManualEntry);
   }
