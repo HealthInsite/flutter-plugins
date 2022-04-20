@@ -640,10 +640,10 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
         Fitness.getHistoryClient(activity!!.applicationContext, googleSignInAccount)
                 .readData(DataReadRequest.Builder()
                         .aggregate(dataType)
-                        .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                         .bucketByTime(interval, TimeUnit.SECONDS)
+                        .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                         .build())
-                .addOnSuccessListener (threadPoolExecutor!!, dataHandler(dataType, field, includeManualEntry, result))
+                .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
                 .addOnFailureListener(errHandler(result))
     }
 
@@ -767,6 +767,42 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
       }
       activity!!.runOnUiThread { result.success(healthData) }
     }
+
+  private fun intervalDataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
+            OnSuccessListener { response: DataReadResponse ->
+                val healthData = mutableListOf<HashMap<String, Any>>()
+                for(bucket in response.buckets) {
+                    /// Fetch all data points for the specified DataType
+                    //val dataSet = response.getDataSet(dataType)
+                    for (dataSet in bucket.dataSets) {
+                        /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+                        var dataPoints = dataSet.dataPoints
+                        if (!includeManualEntry) {
+                            dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+                                dataPoint.originalDataSource.streamName.contains("user_input")
+                            }
+                        }
+                        for (dataPoint in dataPoints) {
+                            for (field in dataPoint.dataType.fields) {
+                                val healthDataItems = dataPoints.mapIndexed { _, dataPoint ->
+                                    return@mapIndexed hashMapOf(
+                                            "value" to getHealthDataValue(dataPoint, field),
+                                            "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
+                                            "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
+                                            "source_name" to (dataPoint.originalDataSource.appPackageName
+                                                    ?: (dataPoint.originalDataSource.device?.model
+                                                            ?: "")),
+                                            "source_id" to dataPoint.originalDataSource.streamIdentifier,
+                                            "is_manual_entry" to dataPoint.originalDataSource.streamName.contains("user_input")
+                                    )
+                                }
+                                healthData.addAll(healthDataItems)
+                            }
+                        }
+                    }
+                }
+                activity!!.runOnUiThread { result.success(healthData) }
+            }
 
   private fun workoutDataHandler(type: String, result: Result) =
     OnSuccessListener { response: SessionReadResponse ->
