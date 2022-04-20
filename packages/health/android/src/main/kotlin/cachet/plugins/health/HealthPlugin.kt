@@ -530,6 +530,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
     val type = call.argument<String>("dataTypeKey")!!
     val startTime = call.argument<Long>("startTime")!!
     val endTime = call.argument<Long>("endTime")!!
+    val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
     // Look up data type and unit for the type key
     val dataType = keyToHealthDataType(type)
     val field = getField(type)
@@ -611,13 +612,50 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
           .addOnFailureListener(errHandler(result))
       }
     }
-
   }
 
-  private fun dataHandler(dataType: DataType, field: Field, result: Result) =
+  private fun getIntervalData(call: MethodCall, result: Result) {
+        if (activity == null) {
+            result.success(null)
+            return
+        }
+
+        val type = call.argument<String>("dataTypeKey")!!
+        val startTime = call.argument<Long>("startTime")!!
+        val endTime = call.argument<Long>("endTime")!!
+        val interval = call.argument<Int>("interval")!!
+        val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
+
+        // Look up data type and unit for the type key
+        val dataType = keyToHealthDataType(type)
+        val field = getField(type)
+        val typesBuilder = FitnessOptions.builder()
+        typesBuilder.addDataType(dataType)
+        if (dataType == DataType.TYPE_SLEEP_SEGMENT) {
+            typesBuilder.accessSleepSessions(FitnessOptions.ACCESS_READ)
+        }
+        val fitnessOptions = typesBuilder.build()
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(activity!!.applicationContext, fitnessOptions)
+
+        Fitness.getHistoryClient(activity!!.applicationContext, googleSignInAccount)
+                .readData(DataReadRequest.Builder()
+                        .aggregate(dataType)
+                        .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                        .bucketByTime(interval, TimeUnit.SECONDS)
+                        .build())
+                .addOnSuccessListener (threadPoolExecutor!!, dataHandler(dataType, field, includeManualEntry, result))
+                .addOnFailureListener(errHandler(result))
+    }
+
+  private fun dataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
     OnSuccessListener { response: DataReadResponse ->
       /// Fetch all data points for the specified DataType
       val dataSet = response.getDataSet(dataType)
+      if(!includeManualEntry) {
+        dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+          dataPoint.originalDataSource.streamName.contains("user_input")
+        }
+      }
       /// For each data point, extract the contents and send them to Flutter, along with date and unit.
       val healthData = dataSet.dataPoints.mapIndexed { _, dataPoint ->
         return@mapIndexed hashMapOf(
@@ -936,6 +974,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
     when (call.method) {
       "requestAuthorization" -> requestAuthorization(call, result)
       "getData" -> getData(call, result)
+      "getIntervalData" -> getIntervalData(call, result)
       "writeData" -> writeData(call, result)
       "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
       "hasPermissions" -> hasPermissions(call, result)
