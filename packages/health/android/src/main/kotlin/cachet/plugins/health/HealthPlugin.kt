@@ -15,6 +15,7 @@ import android.content.Intent
 import android.os.Handler
 import android.util.Log
 import androidx.annotation.NonNull
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import com.google.android.gms.fitness.data.*
 import com.google.android.gms.fitness.request.SessionReadRequest
@@ -663,6 +664,27 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
             }
         }
 
+    /// Disconnect Google fit
+    private fun disconnect(call: MethodCall, result: Result) {
+        if (activity == null) {
+            result.success(false)
+            return
+        }
+        val context = activity!!.applicationContext
+
+        val fitnessOptions = callToHealthTypes(call)
+        val googleAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
+        Fitness.getConfigClient(context, googleAccount).disableFit().continueWith {
+            val signinOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestId()
+                    .requestEmail()
+                    .build()
+            val googleSignInClient = GoogleSignIn.getClient(context, signinOption)
+            googleSignInClient.signOut()
+            result.success(true)
+        }
+    }
+
     /// Handle calls from the MethodChannel
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
@@ -672,6 +694,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
             "writeData" -> writeData(call, result)
             "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
             "hasPermissions" -> hasPermissions(call, result)
+            "disconnect" -> disconnect(call, result)
             else -> result.notImplemented()
         }
     }
