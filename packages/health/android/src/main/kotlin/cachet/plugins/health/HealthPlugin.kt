@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessActivities
 import com.google.android.gms.fitness.FitnessOptions
@@ -1000,6 +1001,27 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
         result.success(map.values.firstOrNull())
       }
     }
+  
+  /// Disconnect Google fit
+    private fun disconnect(call: MethodCall, result: Result) {
+        if (activity == null) {
+            result.success(false)
+            return
+        }
+        val context = activity!!.applicationContext
+
+        val fitnessOptions = callToHealthTypes(call)
+        val googleAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
+        Fitness.getConfigClient(context, googleAccount).disableFit().continueWith {
+            val signinOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestId()
+                    .requestEmail()
+                    .build()
+            val googleSignInClient = GoogleSignIn.getClient(context, signinOption)
+            googleSignInClient.signOut()
+            result.success(true)
+        }
+    }
 
   private fun getActivityType(type: String): String {
     return workoutTypeMap[type] ?: FitnessActivities.UNKNOWN
@@ -1015,6 +1037,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
       "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
       "hasPermissions" -> hasPermissions(call, result)
       "writeWorkoutData" -> writeWorkoutData(call, result)
+      "disconnect" -> disconnect(call, result)
       else -> result.notImplemented()
     }
   }
