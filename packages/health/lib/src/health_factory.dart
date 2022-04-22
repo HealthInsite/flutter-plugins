@@ -409,11 +409,11 @@ class HealthFactory {
       WorkoutSummary? workoutSummary;
       if (e["total_distance"] != null ||
           e["total_energy_burned"] != null ||
-          e["total_energy_steps"] != null) {
+          e["total_steps"] != null) {
         workoutSummary = WorkoutSummary(
           e["total_distance"] ?? 0,
           e["total_energy_burned"] ?? 0,
-          e["total_energy_steps"] ?? 0,
+          e["total_steps"] ?? 0,
         );
       }
       return HealthDataPoint(
