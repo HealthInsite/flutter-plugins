@@ -476,10 +476,13 @@ class HealthFactory {
 
       // Set WorkoutSummary
       WorkoutSummary? workoutSummary;
-      if (e["total_distance"] != null ||
+      if (
+          e["workout_type"] != null ||
+          e["total_distance"] != null ||
           e["total_energy_burned"] != null ||
           e["total_steps"] != null) {
         workoutSummary = WorkoutSummary(
+          e["workout_type"] ?? '',
           e["total_distance"] ?? 0,
           e["total_energy_burned"] ?? 0,
           e["total_steps"] ?? 0,
