@@ -288,6 +288,19 @@ class HealthFactory {
     return removeDuplicates(dataPoints);
   }
 
+  /// Fetch a list of health data points based on [types].
+  Future<List<HealthDataPoint>> getHealthAggregateDataFromTypes(
+      DateTime startDate, DateTime endDate, List<HealthDataType> types,
+      {int activitySegmentDuration = 1, bool includeManualEntry: true}) async {
+    List<HealthDataPoint> dataPoints = [];
+
+    final result = await _prepareAggregateQuery(
+        startDate, endDate, types, activitySegmentDuration, includeManualEntry);
+    dataPoints.addAll(result);
+
+    return removeDuplicates(dataPoints);
+  }
+
   /// Prepares an interval query, i.e. checks if the types are available, etc.
   Future<List<HealthDataPoint>> _prepareQuery(
       DateTime startDate,
@@ -333,6 +346,29 @@ class HealthFactory {
 
     return await _dataIntervalQuery(
         startDate, endDate, dataType, interval, includeManualEntry);
+  }
+
+  /// Prepares an aggregate query, i.e. checks if the types are available, etc.
+  Future<List<HealthDataPoint>> _prepareAggregateQuery(
+      DateTime startDate,
+      DateTime endDate,
+      List<HealthDataType> dataTypes,
+      int activitySegmentDuration,
+      bool includeManualEntry) async {
+    // Ask for device ID only once
+    _deviceId ??= _platformType == PlatformType.ANDROID
+        ? (await _deviceInfo.androidInfo).androidId
+        : (await _deviceInfo.iosInfo).identifierForVendor;
+
+    for (var type in dataTypes) {
+      // If not implemented on platform, throw an exception
+      if (!isDataTypeAvailable(type)) {
+        throw HealthException(type, 'Not available on platform $_platformType');
+      }
+    }
+
+    return await _dataAggregateQuery(startDate, endDate, dataTypes,
+        activitySegmentDuration, includeManualEntry);
   }
 
   /// The main function for fetching health data
@@ -384,6 +420,34 @@ class HealthFactory {
     if (fetchedDataPoints != null) {
       final mesg = <String, dynamic>{
         "dataType": dataType,
+        "dataPoints": fetchedDataPoints,
+        "deviceId": _deviceId!,
+      };
+      return _parse(mesg);
+    }
+    return <HealthDataPoint>[];
+  }
+
+  /// function for fetching statistic health data
+  Future<List<HealthDataPoint>> _dataAggregateQuery(
+      DateTime startDate,
+      DateTime endDate,
+      List<HealthDataType> dataTypes,
+      int activitySegmentDuration,
+      bool includeManualEntry) async {
+    final args = <String, dynamic>{
+      'dataTypeKeys': dataTypes.map((dataType) => _enumToString(dataType)).toList(),
+      'startDate': startDate.millisecondsSinceEpoch,
+      'endDate': endDate.millisecondsSinceEpoch,
+      'activitySegmentDuration': activitySegmentDuration,
+      'includeManualEntry': includeManualEntry
+    };
+
+    final fetchedDataPoints =
+        await _channel.invokeMethod('getAggregateData', args);
+    if (fetchedDataPoints != null) {
+      final mesg = <String, dynamic>{
+        "dataType": HealthDataType.WORKOUT,
         "dataPoints": fetchedDataPoints,
         "deviceId": _deviceId!,
       };
