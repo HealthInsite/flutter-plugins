@@ -647,6 +647,41 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                 .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
                 .addOnFailureListener(errHandler(result))
     }
+  
+  private fun getAggregateData(call: MethodCall, result: Result) {
+        if (activity == null) {
+            result.success(null)
+            return
+        }
+
+        val types = call.argument<List<String>>("dataTypeKeys")!!
+        val startTime = call.argument<Long>("startDate")!!
+        val endTime = call.argument<Long>("endDate")!!
+        val activitySegmentDuration = call.argument<Int>("activitySegmentDuration")!!
+        val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
+
+        val typesBuilder = FitnessOptions.builder()
+        for (type in types) {
+            val dataType = keyToHealthDataType(type)
+            typesBuilder.addDataType(dataType)
+        }
+        val fitnessOptions = typesBuilder.build()
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(activity!!.applicationContext, fitnessOptions)
+
+        val readWorkoutsRequest = DataReadRequest.Builder()
+                .bucketByActivitySegment(activitySegmentDuration, TimeUnit.SECONDS)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+
+        for (type in types) {
+            val dataType = keyToHealthDataType(type)
+            readWorkoutsRequest.aggregate(dataType)
+        }
+
+        Fitness.getHistoryClient(activity!!.applicationContext, googleSignInAccount)
+                .readData(readWorkoutsRequest.build())
+                .addOnSuccessListener (threadPoolExecutor!!, aggregateDataHandler(includeManualEntry, result))
+                .addOnFailureListener(errHandler(result))
+    }
 
   private fun dataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
     OnSuccessListener { response: DataReadResponse ->
@@ -801,6 +836,63 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                             }
                         }
                     }
+                }
+                activity!!.runOnUiThread { result.success(healthData) }
+            }
+  
+  private fun aggregateDataHandler(includeManualEntry: Boolean, result: Result) =
+            OnSuccessListener { response: DataReadResponse ->
+                val healthData = mutableListOf<HashMap<String, Any>>()
+                for(bucket in response.buckets) {
+                    var sourceName:Any = ""
+                    var sourceId:Any = ""
+                    var isManualEntry:Any = false
+                    var totalSteps:Any = 0
+                    var totalDistance:Any = 0
+                    var totalEnergyBurned:Any = 0
+                    /// Fetch all data points for the specified DataType
+                    for (dataSet in bucket.dataSets) {
+                        /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+                        var dataPoints = dataSet.dataPoints
+                        if (!includeManualEntry) {
+                            dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+                                dataPoint.originalDataSource.streamName.contains("user_input")
+                            }
+                        }
+                        for (dataPoint in dataPoints) {
+                            sourceName = (dataPoint.originalDataSource.appPackageName
+                                    ?: (dataPoint.originalDataSource.device?.model
+                                            ?: ""))
+                            sourceId = dataPoint.originalDataSource.streamIdentifier
+                            isManualEntry = dataPoint.originalDataSource.streamName.contains("user_input")
+                            for (field in dataPoint.dataType.fields) {
+                                when(field) {
+                                    getField(STEPS) -> {
+                                        totalSteps = getHealthDataValue(dataPoint, field);
+                                    }
+                                    getField(DISTANCE_DELTA) -> {
+                                        totalDistance = getHealthDataValue(dataPoint, field);
+                                    }
+                                    getField(ACTIVE_ENERGY_BURNED) -> {
+                                        totalEnergyBurned = getHealthDataValue(dataPoint, field);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    val healthDataItems = hashMapOf(
+                            "value" to bucket.getEndTime(TimeUnit.MINUTES) - bucket.getStartTime(TimeUnit.MINUTES),
+                            "date_from" to bucket.getStartTime(TimeUnit.MILLISECONDS),
+                            "date_to" to bucket.getEndTime(TimeUnit.MILLISECONDS),
+                            "source_name" to sourceName,
+                            "source_id" to sourceId,
+                            "is_manual_entry" to isManualEntry,
+                            "workout_type" to bucket.activity.toLowerCase(),
+                            "total_steps" to totalSteps,
+                            "total_distance" to totalDistance,
+                            "total_energy_burned" to totalEnergyBurned
+                    )
+                    healthData.add(healthDataItems)
                 }
                 activity!!.runOnUiThread { result.success(healthData) }
             }
@@ -1034,6 +1126,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
       "getData" -> getData(call, result)
       "getIntervalData" -> getIntervalData(call, result)
       "writeData" -> writeData(call, result)
+      "getAggregateData" -> getAggregateData(call, result)
       "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
       "hasPermissions" -> hasPermissions(call, result)
       "writeWorkoutData" -> writeWorkoutData(call, result)
