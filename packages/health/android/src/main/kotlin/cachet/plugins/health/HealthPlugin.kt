@@ -402,7 +402,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                 var dataPoints = dataSet.dataPoints
                 if(!includeManualEntry) {
                     dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                        dataPoint.originalDataSource.streamName.contains("user_input")
+                        !dataPoint.originalDataSource.streamName.contains("user_input")
                     }
                 }
                 val healthData = dataPoints.mapIndexed { _, dataPoint ->
@@ -431,7 +431,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                         var dataPoints = dataSet.dataPoints
                         if (!includeManualEntry) {
                             dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                dataPoint.originalDataSource.streamName.contains("user_input")
+                                !dataPoint.originalDataSource.streamName.contains("user_input")
                             }
                         }
                         for (dataPoint in dataPoints) {
@@ -472,7 +472,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                         var dataPoints = dataSet.dataPoints
                         if (!includeManualEntry) {
                             dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                dataPoint.originalDataSource.streamName.contains("user_input")
+                                !dataPoint.originalDataSource.streamName.contains("user_input")
                             }
                         }
                         for (dataPoint in dataPoints) {
