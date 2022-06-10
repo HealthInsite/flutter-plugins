@@ -687,13 +687,15 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
     OnSuccessListener { response: DataReadResponse ->
       /// Fetch all data points for the specified DataType
       val dataSet = response.getDataSet(dataType)
+      /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+      var dataPoints = dataSet.dataPoints
       if(!includeManualEntry) {
         dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-          dataPoint.originalDataSource.streamName.contains("user_input")
+          !dataPoint.originalDataSource.streamName.contains("user_input")
         }
       }
       /// For each data point, extract the contents and send them to Flutter, along with date and unit.
-      val healthData = dataSet.dataPoints.mapIndexed { _, dataPoint ->
+      val healthData = dataPoints.mapIndexed { _, dataPoint ->
         return@mapIndexed hashMapOf(
           "value" to getHealthDataValue(dataPoint, field),
           "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
@@ -701,7 +703,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
           "source_name" to (dataPoint.originalDataSource.appPackageName
             ?: (dataPoint.originalDataSource.device?.model
               ?: "")),
-          "source_id" to dataPoint.originalDataSource.streamIdentifier
+          "source_id" to dataPoint.originalDataSource.streamIdentifier,
+          "is_manual_entry" to dataPoint.originalDataSource.streamName.contains("user_input")
         )
       }
       activity!!.runOnUiThread { result.success(healthData) }
@@ -815,7 +818,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                         var dataPoints = dataSet.dataPoints
                         if (!includeManualEntry) {
                             dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                dataPoint.originalDataSource.streamName.contains("user_input")
+                                !dataPoint.originalDataSource.streamName.contains("user_input")
                             }
                         }
                         for (dataPoint in dataPoints) {
@@ -856,7 +859,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
                         var dataPoints = dataSet.dataPoints
                         if (!includeManualEntry) {
                             dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                dataPoint.originalDataSource.streamName.contains("user_input")
+                                !dataPoint.originalDataSource.streamName.contains("user_input")
                             }
                         }
                         for (dataPoint in dataPoints) {
