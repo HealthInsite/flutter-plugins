@@ -78,7 +78,8 @@ class HealthFactory {
   /// Disconnect Google fit.
   ///
   /// Not supported on iOS and method does nothing.
-  Future<bool?> disconnect(List<HealthDataType> types, {
+  Future<bool?> disconnect(
+    List<HealthDataType> types, {
     List<HealthDataAccess>? permissions,
   }) async {
     if (permissions != null && permissions.length != types.length) {
@@ -97,9 +98,8 @@ class HealthFactory {
 
     List<String> keys = mTypes.map((e) => _enumToString(e)).toList();
 
-    return await _channel.invokeMethod('disconnect', {
-      'types': keys, "permissions": mPermissions
-    });
+    return await _channel.invokeMethod(
+        'disconnect', {'types': keys, "permissions": mPermissions});
   }
 
   /// Requests permissions to access data types in Apple Health or Google Fit.
@@ -396,7 +396,7 @@ class HealthFactory {
       bool includeManualEntry) async {
     // Ask for device ID only once
     _deviceId ??= _platformType == PlatformType.ANDROID
-        ? (await _deviceInfo.androidInfo).androidId
+        ? (await _deviceInfo.androidInfo).id
         : (await _deviceInfo.iosInfo).identifierForVendor;
 
     // If not implemented on platform, throw an exception
@@ -418,7 +418,7 @@ class HealthFactory {
       bool includeManualEntry) async {
     // Ask for device ID only once
     _deviceId ??= _platformType == PlatformType.ANDROID
-        ? (await _deviceInfo.androidInfo).androidId
+        ? (await _deviceInfo.androidInfo).id
         : (await _deviceInfo.iosInfo).identifierForVendor;
 
     for (var type in dataTypes) {
@@ -470,8 +470,9 @@ class HealthFactory {
       bool includeManualEntry) async {
     final args = <String, dynamic>{
       'dataTypeKey': _enumToString(dataType),
-      'startDate': startDate.millisecondsSinceEpoch,
-      'endDate': endDate.millisecondsSinceEpoch,
+      'dataUnitKey': _dataTypeToUnit[dataType]!.typeToString(),
+      'startTime': startDate.millisecondsSinceEpoch,
+      'endTime': endDate.millisecondsSinceEpoch,
       'interval': interval,
       'includeManualEntry': includeManualEntry
     };
@@ -497,9 +498,10 @@ class HealthFactory {
       int activitySegmentDuration,
       bool includeManualEntry) async {
     final args = <String, dynamic>{
-      'dataTypeKeys': dataTypes.map((dataType) => _enumToString(dataType)).toList(),
-      'startDate': startDate.millisecondsSinceEpoch,
-      'endDate': endDate.millisecondsSinceEpoch,
+      'dataTypeKeys':
+          dataTypes.map((dataType) => _enumToString(dataType)).toList(),
+      'startTime': startDate.millisecondsSinceEpoch,
+      'endTime': endDate.millisecondsSinceEpoch,
       'activitySegmentDuration': activitySegmentDuration,
       'includeManualEntry': includeManualEntry
     };
@@ -527,7 +529,8 @@ class HealthFactory {
       HealthValue value;
       if (dataType == HealthDataType.AUDIOGRAM) {
         value = AudiogramHealthValue.fromJson(e);
-      } else if (dataType == HealthDataType.WORKOUT) {
+      } else if (dataType == HealthDataType.WORKOUT &&
+          e["totalEnergyBurned"] != null) {
         value = WorkoutHealthValue.fromJson(e);
       } else {
         value = NumericHealthValue(e['value']);
@@ -540,8 +543,7 @@ class HealthFactory {
 
       // Set WorkoutSummary
       WorkoutSummary? workoutSummary;
-      if (
-          e["workout_type"] != null ||
+      if (e["workout_type"] != null ||
           e["total_distance"] != null ||
           e["total_energy_burned"] != null ||
           e["total_steps"] != null) {

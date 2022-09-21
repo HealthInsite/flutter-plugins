@@ -609,7 +609,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
               .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
               .build()
           )
-          .addOnSuccessListener(threadPoolExecutor!!, dataHandler(dataType, field, result))
+          .addOnSuccessListener(threadPoolExecutor!!, dataHandler(dataType, field, includeManualEntry, result))
           .addOnFailureListener(errHandler(result))
       }
     }
@@ -655,8 +655,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) : MethodCallHandl
         }
 
         val types = call.argument<List<String>>("dataTypeKeys")!!
-        val startTime = call.argument<Long>("startDate")!!
-        val endTime = call.argument<Long>("endDate")!!
+        val startTime = call.argument<Long>("startTime")!!
+        val endTime = call.argument<Long>("endTime")!!
         val activitySegmentDuration = call.argument<Int>("activitySegmentDuration")!!
         val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
 

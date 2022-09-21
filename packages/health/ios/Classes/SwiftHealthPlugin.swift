@@ -521,6 +521,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     func getIntervalData(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         let dataTypeKey = (arguments?["dataTypeKey"] as? String) ?? "DEFAULT"
+        let dataUnitKey = (arguments?["dataUnitKey"] as? String)
         let startDate = (arguments?["startTime"] as? NSNumber) ?? 0
         let endDate = (arguments?["endTime"] as? NSNumber) ?? 0
         let intervalInSecond = (arguments?["interval"] as? Int) ?? 1
@@ -552,9 +553,9 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                 collection.enumerateStatistics(from: dateFrom, to: dateTo) {
                     statisticData, _ in
                     if let quantity = statisticData.sumQuantity() {
-                        let unit = self.unitLookUp(key: dataTypeKey)
+                        let unit = self.unitDict[dataUnitKey!]                        
                         let dict = [
-                        "value": quantity.doubleValue(for: unit),
+                        "value": quantity.doubleValue(for: unit!),
                         "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
                         "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
                         "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
@@ -578,59 +579,43 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
 
     func getTotalStepsInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
-        let dataTypeKey = (arguments?["dataTypeKey"] as? String) ?? "DEFAULT"
-        let startDate = (arguments?["startTime"] as? NSNumber) ?? 0
-        let endDate = (arguments?["endTime"] as? NSNumber) ?? 0
-        let intervalInSecond = (arguments?["interval"] as? Int) ?? 1
-        let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
-
-        // Set interval in seconds.
-        var interval = DateComponents()
-        interval.second = intervalInSecond
-
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+        
         // Convert dates from milliseconds to Date()
-        let dateFrom = Date(timeIntervalSince1970: startDate.doubleValue / 1000)
-        let dateTo = Date(timeIntervalSince1970: endDate.doubleValue / 1000)
+        let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
         
-        let quantityType: HKQuantityType! = dataQuantityTypesDict[dataTypeKey]
-        var predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: [])
-        if (!includeManualEntry) {
-            let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
-            predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
-        }
-
-        let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        let predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: .strictStartDate)
         
-        query.initialResultsHandler = {
-            _, statisticCollectionOrNil, error in
-
-            switch statisticCollectionOrNil {
-            case let (collection as HKStatisticsCollection) as Any:
-                var dictionaries = [[String:Any]]()
-                collection.enumerateStatistics(from: dateFrom, to: dateTo) {
-                    statisticData, _ in
-                    if let quantity = statisticData.sumQuantity() {
-                        let unit = self.unitLookUp(key: dataTypeKey)
-                        let dict = [
-                        "value": quantity.doubleValue(for: unit),
-                        "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
-                        "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
-                        "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
-                        "source_name": statisticData.sources?.first?.name ?? ""
-                        ] as [String : Any]
-                        dictionaries.append(dict)
-                    }
-                }
-                DispatchQueue.main.async {
-                    result(dictionaries)
-                }
-
-            default:
+        let query = HKStatisticsQuery(quantityType: sampleType,
+                                      quantitySamplePredicate: predicate,
+                                      options: .cumulativeSum) { query, queryResult, error in
+            
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting total steps in interval \(error.localizedDescription)")
+                
                 DispatchQueue.main.async {
                     result(nil)
                 }
+                return
+            }
+            
+            var steps = 0.0
+            
+            if let quantity = queryResult.sumQuantity() {
+                let unit = HKUnit.count()
+                steps = quantity.doubleValue(for: unit)
+            }
+            
+            let totalSteps = Int(steps)
+            DispatchQueue.main.async {
+                result(totalSteps)
             }
         }
+        
         HKHealthStore().execute(query)
     }
     
