@@ -245,6 +245,9 @@ class HealthFactory {
     if (type == HealthDataType.SLEEP_ASLEEP ||
         type == HealthDataType.SLEEP_AWAKE ||
         type == HealthDataType.SLEEP_IN_BED ||
+        type == HealthDataType.SLEEP_ASLEEP_CORE ||
+        type == HealthDataType.SLEEP_ASLEEP_DEEP ||
+        type == HealthDataType.SLEEP_ASLEEP_REM ||
         type == HealthDataType.HEADACHE_NOT_PRESENT ||
         type == HealthDataType.HEADACHE_MILD ||
         type == HealthDataType.HEADACHE_MODERATE ||
@@ -605,6 +608,12 @@ class HealthFactory {
         return 1;
       case HealthDataType.SLEEP_AWAKE:
         return 2;
+      case HealthDataType.SLEEP_ASLEEP_CORE:
+        return 3;
+      case HealthDataType.SLEEP_ASLEEP_DEEP:
+        return 4;
+      case HealthDataType.SLEEP_ASLEEP_REM:
+        return 5;
       case HealthDataType.HEADACHE_UNSPECIFIED:
         return 0;
       case HealthDataType.HEADACHE_NOT_PRESENT:
