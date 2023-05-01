@@ -536,7 +536,7 @@ class HealthFactory {
           e["totalEnergyBurned"] != null) {
         value = WorkoutHealthValue.fromJson(e);
       } else {
-        value = NumericHealthValue(e['value']);
+        value = NumericHealthValue(e['value'] ?? 0);
       }
       final DateTime from = DateTime.fromMillisecondsSinceEpoch(e['date_from']);
       final DateTime to = DateTime.fromMillisecondsSinceEpoch(e['date_to']);
