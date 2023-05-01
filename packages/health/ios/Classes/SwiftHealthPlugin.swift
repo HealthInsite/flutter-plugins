@@ -44,6 +44,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     let WALKING_HEART_RATE = "WALKING_HEART_RATE"
     let WEIGHT = "WEIGHT"
     let DISTANCE_WALKING_RUNNING = "DISTANCE_WALKING_RUNNING"
+    let DISTANCE_SWIMMING = "DISTANCE_SWIMMING"
+    let DISTANCE_CYCLING = "DISTANCE_CYCLING"
     let FLIGHTS_CLIMBED = "FLIGHTS_CLIMBED"
     let WATER = "WATER"
     let MINDFULNESS = "MINDFULNESS"
@@ -805,6 +807,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             dataTypesDict[WALKING_HEART_RATE] = HKSampleType.quantityType(forIdentifier: .walkingHeartRateAverage)!
             dataTypesDict[WEIGHT] = HKSampleType.quantityType(forIdentifier: .bodyMass)!
             dataTypesDict[DISTANCE_WALKING_RUNNING] = HKSampleType.quantityType(forIdentifier: .distanceWalkingRunning)!
+            dataTypesDict[DISTANCE_SWIMMING] = HKSampleType.quantityType(forIdentifier: .distanceSwimming)!
+            dataTypesDict[DISTANCE_CYCLING] = HKSampleType.quantityType(forIdentifier: .distanceCycling)!
             dataTypesDict[FLIGHTS_CLIMBED] = HKSampleType.quantityType(forIdentifier: .flightsClimbed)!
             dataTypesDict[WATER] = HKSampleType.quantityType(forIdentifier: .dietaryWater)!
             dataTypesDict[MINDFULNESS] = HKSampleType.categoryType(forIdentifier: .mindfulSession)!
@@ -846,6 +850,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             dataQuantityTypesDict[WALKING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .walkingHeartRateAverage)!
             dataQuantityTypesDict[WEIGHT] = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
             dataQuantityTypesDict[DISTANCE_WALKING_RUNNING] = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+            dataQuantityTypesDict[DISTANCE_SWIMMING] = HKQuantityType.quantityType(forIdentifier: .distanceSwimming)!
+            dataQuantityTypesDict[DISTANCE_CYCLING] = HKQuantityType.quantityType(forIdentifier: .distanceCycling)!          
             dataQuantityTypesDict[FLIGHTS_CLIMBED] = HKQuantityType.quantityType(forIdentifier: .flightsClimbed)!
             dataQuantityTypesDict[WATER] = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
 
