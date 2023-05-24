@@ -47,6 +47,7 @@ enum HealthDataType {
   LOW_HEART_RATE_EVENT,
   IRREGULAR_HEART_RATE_EVENT,
   ELECTRODERMAL_ACTIVITY,
+  ELECTROCARDIOGRAM,
 }
 
 enum HealthDataAccess {
@@ -98,6 +99,7 @@ const List<HealthDataType> _dataTypeKeysIOS = [
   HealthDataType.HEADACHE_MODERATE,
   HealthDataType.HEADACHE_SEVERE,
   HealthDataType.HEADACHE_UNSPECIFIED,
+  HealthDataType.ELECTROCARDIOGRAM,
 ];
 
 /// List of data types available on Android
@@ -172,11 +174,12 @@ const Map<HealthDataType, HealthDataUnit> _dataTypeToUnit = {
   HealthDataType.LOW_HEART_RATE_EVENT: HealthDataUnit.NO_UNIT,
   HealthDataType.IRREGULAR_HEART_RATE_EVENT: HealthDataUnit.NO_UNIT,
   HealthDataType.HEART_RATE_VARIABILITY_SDNN: HealthDataUnit.MILLISECOND,
+  HealthDataType.ELECTROCARDIOGRAM: HealthDataUnit.VOLT,
 };
 
 const PlatformTypeJsonValue = {
   PlatformType.IOS: 'ios',
-  PlatformType.ANDROID: 'android'
+  PlatformType.ANDROID: 'android',
 };
 
 /// List of all [HealthDataUnit]s.
@@ -346,6 +349,12 @@ enum HealthWorkoutActivityType {
   // Android only
   AEROBICS,
   BIATHLON,
+  BIKING_HAND,
+  BIKING_MOUNTAIN,
+  BIKING_ROAD,
+  BIKING_SPINNING,
+  BIKING_STATIONARY,
+  BIKING_UTILITY,
   CALISTHENICS,
   CIRCUIT_TRAINING,
   CROSS_FIT,
@@ -361,6 +370,7 @@ enum HealthWorkoutActivityType {
   HOUSEWORK,
   INTERVAL_TRAINING,
   IN_VEHICLE,
+  ICE_SKATING,
   KAYAKING,
   KETTLEBELL_TRAINING,
   KICK_SCOOTER,
@@ -371,6 +381,7 @@ enum HealthWorkoutActivityType {
   PARAGLIDING,
   POLO,
   ROCK_CLIMBING, // on iOS this is the same as CLIMBING
+  ROWING_MACHINE,
   RUNNING_JOGGING, // on iOS this is the same as RUNNING
   RUNNING_SAND, // on iOS this is the same as RUNNING
   RUNNING_TREADMILL, // on iOS this is the same as RUNNING
@@ -378,10 +389,13 @@ enum HealthWorkoutActivityType {
   SKATING_CROSS, // on iOS this is the same as SKATING
   SKATING_INDOOR, // on iOS this is the same as SKATING
   SKATING_INLINE, // on iOS this is the same as SKATING
+  SKIING,
   SKIING_BACK_COUNTRY,
   SKIING_KITE,
   SKIING_ROLLER,
   SLEDDING,
+  SNOWMOBILE,
+  SNOWSHOEING,
   STAIR_CLIMBING_MACHINE,
   STANDUP_PADDLEBOARDING,
   STILL,
@@ -405,4 +419,39 @@ enum HealthWorkoutActivityType {
 
   //
   OTHER,
+}
+
+enum ElectrocardiogramClassification {
+  NOT_SET,
+  SINUS_RHYTHM,
+  ATRIAL_FIBRILLATION,
+  INCONCLUSIVE_LOW_HEART_RATE,
+  INCONCLUSIVE_HIGH_HEART_RATE,
+  INCONCLUSIVE_POOR_READING,
+  INCONCLUSIVE_OTHER,
+  UNRECOGNIZED,
+}
+
+extension ElectrocardiogramClassificationValue
+    on ElectrocardiogramClassification {
+  int get value {
+    switch (this) {
+      case ElectrocardiogramClassification.NOT_SET:
+        return 0;
+      case ElectrocardiogramClassification.SINUS_RHYTHM:
+        return 1;
+      case ElectrocardiogramClassification.ATRIAL_FIBRILLATION:
+        return 2;
+      case ElectrocardiogramClassification.INCONCLUSIVE_LOW_HEART_RATE:
+        return 3;
+      case ElectrocardiogramClassification.INCONCLUSIVE_HIGH_HEART_RATE:
+        return 4;
+      case ElectrocardiogramClassification.INCONCLUSIVE_POOR_READING:
+        return 5;
+      case ElectrocardiogramClassification.INCONCLUSIVE_OTHER:
+        return 6;
+      case ElectrocardiogramClassification.UNRECOGNIZED:
+        return 100;
+    }
+  }
 }

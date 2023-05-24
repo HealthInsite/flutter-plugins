@@ -55,6 +55,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     let HEADACHE_MILD = "HEADACHE_MILD"
     let HEADACHE_MODERATE = "HEADACHE_MODERATE"
     let HEADACHE_SEVERE = "HEADACHE_SEVERE"
+    let ELECTROCARDIOGRAM = "ELECTROCARDIOGRAM"
     
     // Health Unit types
     // MOLE_UNIT_WITH_MOLAR_MASS, // requires molar mass input - not supported yet
@@ -150,6 +151,11 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             try! writeAudiogram(call: call, result: result)
         }
         
+        /// Handle writeBloodPressure
+        else if (call.method.elementsEqual("writeBloodPressure")){
+            try! writeBloodPressure(call: call, result: result)
+        }
+        
         /// Handle writeWorkoutData
         else if (call.method.elementsEqual("writeWorkoutData")){
             try! writeWorkoutData(call: call, result: result)
@@ -159,6 +165,12 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         else if (call.method.elementsEqual("hasPermissions")){
             try! hasPermissions(call: call, result: result)
         }
+        
+        /// Handle delete data
+        else if (call.method.elementsEqual("delete")){
+            try! delete(call: call, result: result)
+        }
+        
     }
     
     func checkIfHealthDataAvailable(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -324,6 +336,32 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             }
         })
     }
+
+    func writeBloodPressure(call: FlutterMethodCall, result: @escaping FlutterResult) throws {
+        guard let arguments = call.arguments as? NSDictionary,
+            let systolic = (arguments["systolic"] as? Double),
+            let diastolic = (arguments["diastolic"] as? Double),
+            let startTime = (arguments["startTime"] as? NSNumber),
+            let endTime = (arguments["endTime"] as? NSNumber)
+        else {
+            throw PluginError(message: "Invalid Arguments")
+        }
+        let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let systolic_sample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .bloodPressureSystolic)!, quantity: HKQuantity(unit: HKUnit.millimeterOfMercury(), doubleValue: systolic), start: dateFrom, end: dateTo)
+        let diastolic_sample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .bloodPressureDiastolic)!, quantity: HKQuantity(unit: HKUnit.millimeterOfMercury(), doubleValue: diastolic), start: dateFrom, end: dateTo)
+        
+        HKHealthStore().save([systolic_sample, diastolic_sample], withCompletion: { (success, error) in
+            if let err = error {
+                print("Error Saving Blood Pressure Sample: \(err.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                result(success)
+            }
+        })
+    }
+
     
     func writeWorkoutData(call: FlutterMethodCall, result: @escaping FlutterResult) throws {
         guard let arguments = call.arguments as? NSDictionary,
@@ -332,7 +370,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
               let endTime = (arguments["endTime"] as? NSNumber),
               let ac = workoutActivityTypeMap[activityType]
         else {
-            throw PluginError(message: "Invalid Arguments - ActivityType, startTime or endTime invalid")
+            throw PluginError(message: "Invalid Arguments - activityType, startTime or endTime invalid")
         }
         
         var totalEnergyBurned: HKQuantity?
@@ -365,6 +403,42 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         })
     }
     
+    func delete(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let dataTypeKey = (arguments?["dataTypeKey"] as? String)!
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+
+        let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let dataType = dataTypeLookUp(key: dataTypeKey)
+        
+        let predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+
+        let deleteQuery = HKSampleQuery(sampleType: dataType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { [self] x, samplesOrNil, error in
+
+            guard let samplesOrNil = samplesOrNil, error == nil else {
+                // Handle the error if necessary
+                print("Error deleting \(dataType)")
+                return
+            }
+
+            // Delete the retrieved objects from the HealthKit store
+            HKHealthStore().delete(samplesOrNil) { (success, error) in
+                if let err = error {
+                        print("Error deleting \(dataType) Sample: \(err.localizedDescription)")
+                    }
+                    DispatchQueue.main.async {
+                        result(success)
+                    }
+            }
+        }
+
+        HKHealthStore().execute(deleteQuery)
+    }
+    
     func getData(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         let dataTypeKey = (arguments?["dataTypeKey"] as? String)!
@@ -378,6 +452,10 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
         
         let dataType = dataTypeLookUp(key: dataTypeKey)
+        var unit: HKUnit?
+        if let dataUnitKey = dataUnitKey {
+            unit = unitDict[dataUnitKey]
+        }
         
         let predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: .strictStartDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
@@ -387,7 +465,6 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             
             switch samplesOrNil {
             case let (samples as [HKQuantitySample]) as Any:
-                let unit = unitDict[dataUnitKey!]
                 let dictionaries = samples.map { sample -> NSDictionary in
                     return [
                         "uuid": "\(sample.uuid)",
@@ -488,13 +565,54 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                 }
                 
             default:
-                DispatchQueue.main.async {
-                    result(nil)
+                if #available(iOS 14.0, *), let ecgSamples = samplesOrNil as? [HKElectrocardiogram] {
+                    let dictionaries = ecgSamples.map(fetchEcgMeasurements)
+                    DispatchQueue.main.async {
+                        result(dictionaries)
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        print("Error getting ECG - only available on iOS 14.0 and above!")
+                        result(nil)
+                    }
                 }
             }
         }
         
         HKHealthStore().execute(query)
+    }
+    
+    @available(iOS 14.0, *)
+    private func fetchEcgMeasurements(_ sample: HKElectrocardiogram) -> NSDictionary {
+        let semaphore = DispatchSemaphore(value: 0)
+        var voltageValues = [NSDictionary]()
+        let voltageQuery = HKElectrocardiogramQuery(sample) { query, result in
+            switch (result) {
+            case let .measurement(measurement):
+                if let voltageQuantity = measurement.quantity(for: .appleWatchSimilarToLeadI) {
+                    let voltage = voltageQuantity.doubleValue(for: HKUnit.volt())
+                    let timeSinceSampleStart = measurement.timeSinceSampleStart
+                    voltageValues.append(["voltage": voltage, "timeSinceSampleStart": timeSinceSampleStart])
+                }
+            case .done:
+                semaphore.signal()
+            case let .error(error):
+                print(error)
+            }
+        }
+        HKHealthStore().execute(voltageQuery)
+        semaphore.wait()
+        return [
+            "uuid": "\(sample.uuid)",
+            "voltageValues": voltageValues,
+            "averageHeartRate": sample.averageHeartRate?.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute())),
+            "samplingFrequency": sample.samplingFrequency?.doubleValue(for: HKUnit.hertz()),
+            "classification": sample.classification.rawValue,
+            "date_from": Int(sample.startDate.timeIntervalSince1970 * 1000),
+            "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
+            "source_id": sample.sourceRevision.source.bundleIdentifier,
+            "source_name": sample.sourceRevision.source.name
+        ]
     }
     
     func getTotalStepsInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -624,7 +742,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         workoutActivityTypeMap["FLEXIBILITY"] = .flexibility
         workoutActivityTypeMap["WALKING"] = .walking
         workoutActivityTypeMap["RUNNING"] = .running
-        workoutActivityTypeMap["RUNNING_JOGGING"] = .running // Supported due to combining with Android naming 
+        workoutActivityTypeMap["RUNNING_JOGGING"] = .running // Supported due to combining with Android naming
         workoutActivityTypeMap["RUNNING_SAND"] = .running // Supported due to combining with Android naming
         workoutActivityTypeMap["RUNNING_TREADMILL"] = .running // Supported due to combining with Android naming
         workoutActivityTypeMap["WHEELCHAIR_WALK_PACE"] = .wheelchairWalkPace
@@ -750,6 +868,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         }
         
         if #available(iOS 14.0, *) {
+            dataTypesDict[ELECTROCARDIOGRAM] = HKSampleType.electrocardiogramType()
+            
             unitDict[VOLT] = HKUnit.volt()
             unitDict[INCHES_OF_MERCURY] = HKUnit.inchesOfMercury()
             
