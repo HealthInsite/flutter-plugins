@@ -1,3 +1,36 @@
+## 6.0.0
+
+- Fixed issues #[694](https://github.com/cph-cachet/flutter-plugins/issues/694), #[696](https://github.com/cph-cachet/flutter-plugins/issues/696), #[697](https://github.com/cph-cachet/flutter-plugins/issues/697), #[698](https://github.com/cph-cachet/flutter-plugins/issues/698)
+- added totalSteps for HealthConnect
+- added supplemental oxygen flow rate for blood oxygen saturation on Android
+
+## 5.0.0
+
+- Added initial support for the new Health Connect API, as Google Fit is being deprecated.
+  - Does not yet support `revokePermissions`, `getTotalStepsInInterval`.
+- Changed Intl package version dependancy to `^0.17.0` to work with flutter stable version.
+- Updated the example app to handle more buttons.
+
+## 4.6.0
+
+- Added method for revoking permissions. On Android it uses `disableFit()` to remove access to Google Fit - `revokePermissions`. Documented lack of methods for iOS.
+
+## 4.5.0
+
+- Updated android sdk, gradle
+- Updated `enumToString` to native `.name`
+- Update and fixed JSON serialization of HealthDataPoints
+- Removed auth request in `writeWorkoutData` to avoid bug when denying the auth.
+- Merged pull requests [#653](https://github.com/cph-cachet/flutter-plugins/pull/653), [#652](https://github.com/cph-cachet/flutter-plugins/pull/652), [#639](https://github.com/cph-cachet/flutter-plugins/pull/639), [#644](https://github.com/cph-cachet/flutter-plugins/pull/644), [#668](https://github.com/cph-cachet/flutter-plugins/pull/668)
+- Further developed [#644](https://github.com/cph-cachet/flutter-plugins/pull/644) on android to accommodate having the `writeBloodPressure` api.
+- Small bug fixes
+
+## 4.4.0
+
+- Merged pull request #[566](https://github.com/cph-cachet/flutter-plugins/pull/566), [#578](https://github.com/cph-cachet/flutter-plugins/pull/578), [#596](https://github.com/cph-cachet/flutter-plugins/pull/596), [#623](https://github.com/cph-cachet/flutter-plugins/pull/623), [#632](https://github.com/cph-cachet/flutter-plugins/pull/632)
+- ECG added as part of [#566](https://github.com/cph-cachet/flutter-plugins/pull/566)
+- Small fixes
+
 ## 4.3.0
 
 - upgrade to `device_info_plus: ^8.0.0`
