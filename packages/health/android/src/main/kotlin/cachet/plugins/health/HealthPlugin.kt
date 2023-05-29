@@ -868,7 +868,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         val startTime = call.argument<Long>("startTime")!!
         val endTime = call.argument<Long>("endTime")!!
         val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
-    // Look up data type and unit for the type key
+        // Look up data type and unit for the type key
         val dataType = keyToHealthDataType(type)
         val field = getField(type)
         val typesBuilder = FitnessOptions.builder()
@@ -932,10 +932,78 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                             .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                             .build(),
                     )
-                    .addOnSuccessListener(threadPoolExecutor!!, dataHandler(dataType, field, result))
+                    .addOnSuccessListener(threadPoolExecutor!!, dataHandler(dataType, field, includeManualEntry, result))
                     .addOnFailureListener(errHandler(result, "There was an error getting the data!"))
             }
         }
+    }
+
+    private fun getIntervalData(call: MethodCall, result: Result) {
+        if (context == null) {
+            result.success(null)
+            return
+        }
+
+        val type = call.argument<String>("dataTypeKey")!!
+        val startTime = call.argument<Long>("startTime")!!
+        val endTime = call.argument<Long>("endTime")!!
+        val interval = call.argument<Int>("interval")!!
+        val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
+
+        // Look up data type and unit for the type key
+        val dataType = keyToHealthDataType(type)
+        val field = getField(type)
+        val typesBuilder = FitnessOptions.builder()
+        typesBuilder.addDataType(dataType)
+        if (dataType == DataType.TYPE_SLEEP_SEGMENT) {
+            typesBuilder.accessSleepSessions(FitnessOptions.ACCESS_READ)
+        }
+        val fitnessOptions = typesBuilder.build()
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context!!.applicationContext, fitnessOptions)
+
+        Fitness.getHistoryClient(context!!.applicationContext, googleSignInAccount)
+                .readData(DataReadRequest.Builder()
+                        .aggregate(dataType)
+                        .bucketByTime(interval, TimeUnit.SECONDS)
+                        .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                        .build())
+                .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
+                .addOnFailureListener(errHandler(result))
+    }
+
+    private fun getAggregateData(call: MethodCall, result: Result) {
+        if (context == null) {
+            result.success(null)
+            return
+        }
+
+        val types = call.argument<List<String>>("dataTypeKeys")!!
+        val startTime = call.argument<Long>("startTime")!!
+        val endTime = call.argument<Long>("endTime")!!
+        val activitySegmentDuration = call.argument<Int>("activitySegmentDuration")!!
+        val includeManualEntry = call.argument<Boolean>("includeManualEntry")!!
+
+        val typesBuilder = FitnessOptions.builder()
+        for (type in types) {
+            val dataType = keyToHealthDataType(type)
+            typesBuilder.addDataType(dataType)
+        }
+        val fitnessOptions = typesBuilder.build()
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context!!.applicationContext, fitnessOptions)
+
+        val readWorkoutsRequest = DataReadRequest.Builder()
+                .bucketByActivitySegment(activitySegmentDuration, TimeUnit.SECONDS)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+
+        for (type in types) {
+            val dataType = keyToHealthDataType(type)
+            readWorkoutsRequest.aggregate(dataType)
+        }
+
+        Fitness.getHistoryClient(context!!.applicationContext, googleSignInAccount)
+                .readData(readWorkoutsRequest.build())
+                .addOnSuccessListener (threadPoolExecutor!!, aggregateDataHandler(includeManualEntry, result))
+                .addOnFailureListener(errHandler(result))
     }
 
     private fun dataHandler(dataType: DataType, field: Field, result: Result) =
@@ -1099,7 +1167,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                         }
                     }
                 }
-                activity!!.runOnUiThread { result.success(healthData) }
+                Handler(context!!.mainLooper).run { result.success(healthData) }
             }
   
   private fun aggregateDataHandler(includeManualEntry: Boolean, result: Result) =
@@ -1156,7 +1224,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     )
                     healthData.add(healthDataItems)
                 }
-                activity!!.runOnUiThread { result.success(healthData) }
+                Handler(context!!.mainLooper).run { result.success(healthData) }
             }
 
   private fun workoutDataHandler(type: String, result: Result) =
