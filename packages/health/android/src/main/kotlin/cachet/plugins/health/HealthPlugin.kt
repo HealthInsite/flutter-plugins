@@ -968,7 +968,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                         .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                         .build())
                 .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
-                .addOnFailureListener(errHandler(result))
+                .addOnFailureListener(errHandler(result, "There was an error getting the interval data!"))
     }
 
     private fun getAggregateData(call: MethodCall, result: Result) {
@@ -1003,7 +1003,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         Fitness.getHistoryClient(context!!.applicationContext, googleSignInAccount)
                 .readData(readWorkoutsRequest.build())
                 .addOnSuccessListener (threadPoolExecutor!!, aggregateDataHandler(includeManualEntry, result))
-                .addOnFailureListener(errHandler(result))
+                .addOnFailureListener(errHandler(result, "There was an error getting the aggregate data!"))
     }
 
     private fun dataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
