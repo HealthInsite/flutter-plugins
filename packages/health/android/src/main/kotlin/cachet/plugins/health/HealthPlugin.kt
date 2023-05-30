@@ -1006,12 +1006,19 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 .addOnFailureListener(errHandler(result))
     }
 
-    private fun dataHandler(dataType: DataType, field: Field, result: Result) =
+    private fun dataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
         OnSuccessListener { response: DataReadResponse ->
             // / Fetch all data points for the specified DataType
             val dataSet = response.getDataSet(dataType)
+            /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+            var dataPoints = dataSet.dataPoints
+            if(!includeManualEntry) {
+                dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+                !dataPoint.originalDataSource.streamName.contains("user_input")
+                }
+            }
             // / For each data point, extract the contents and send them to Flutter, along with date and unit.
-            val healthData = dataSet.dataPoints.mapIndexed { _, dataPoint ->
+            val healthData = dataPoints.mapIndexed { _, dataPoint ->
                 return@mapIndexed hashMapOf(
                     "value" to getHealthDataValue(dataPoint, field),
                     "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
