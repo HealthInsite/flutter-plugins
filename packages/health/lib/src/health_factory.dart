@@ -594,7 +594,7 @@ class HealthFactory {
       bool includeManualEntry) async {
     final args = <String, dynamic>{
       'dataTypeKey': dataType.name,
-      'dataUnitKey': _dataTypeToUnit[dataType]!.typeToString(),
+      'dataUnitKey': _dataTypeToUnit[dataType]!.name,
       'startTime': startDate.millisecondsSinceEpoch,
       'endTime': endDate.millisecondsSinceEpoch,
       'interval': interval,
