@@ -116,7 +116,7 @@ class HealthFactory {
     // on Android, if BMI is requested, then also ask for weight and height
     if (_platformType == PlatformType.ANDROID) _handleBMI(mTypes, mPermissions);
 
-    List<String> keys = mTypes.map((e) => _enumToString(e)).toList();
+    List<String> keys = mTypes.map((dataType) => dataType.name).toList();
 
     return await _channel.invokeMethod(
         'disconnect', {'types': keys, "permissions": mPermissions});
@@ -593,7 +593,7 @@ class HealthFactory {
       int interval,
       bool includeManualEntry) async {
     final args = <String, dynamic>{
-      'dataTypeKey': _enumToString(dataType),
+      'dataTypeKey': dataType.name,
       'dataUnitKey': _dataTypeToUnit[dataType]!.typeToString(),
       'startTime': startDate.millisecondsSinceEpoch,
       'endTime': endDate.millisecondsSinceEpoch,
@@ -622,8 +622,7 @@ class HealthFactory {
       int activitySegmentDuration,
       bool includeManualEntry) async {
     final args = <String, dynamic>{
-      'dataTypeKeys':
-          dataTypes.map((dataType) => _enumToString(dataType)).toList(),
+      'dataTypeKeys': dataTypes.map((dataType) => dataType.name).toList(),
       'startTime': startDate.millisecondsSinceEpoch,
       'endTime': endDate.millisecondsSinceEpoch,
       'activitySegmentDuration': activitySegmentDuration,
