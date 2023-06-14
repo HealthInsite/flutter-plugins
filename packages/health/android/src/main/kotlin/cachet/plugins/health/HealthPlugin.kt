@@ -44,6 +44,7 @@ import androidx.health.connect.client.units.*
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
@@ -1762,68 +1763,43 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
 
     fun getAggregateHCData(call: MethodCall, result: Result) {
         val dataType = call.argument<String>("dataTypeKey")!!
+        val interval = call.argument<Long>("interval")!!
         val startTime = Instant.ofEpochMilli(call.argument<Long>("startTime")!!)
         val endTime = Instant.ofEpochMilli(call.argument<Long>("endTime")!!)
         val healthConnectData = mutableListOf<Map<String, Any?>>()
         scope.launch {
-            MapToHCType[dataType]?.let { classType ->
-                val request = ReadRecordsRequest(
-                    recordType = classType,
+            MapToHCAggregateMetric[dataType]?.let { metricClassType ->
+                val request = AggregateGroupByDurationRequest(
+                    metrics = setOf(metricClassType),
                     timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                    timeRangeSlicer = Duration.ofSeconds(interval)
                 )
-                val response = healthConnectClient.readRecords(request)
+                val response = healthConnectClient.aggregateGroupByDuration(request)
 
-                // Workout needs distance and total calories burned too
-                if (dataType == WORKOUT) {
-                    for (rec in response.records) {
-                        val record = rec as ExerciseSessionRecord
-                        val distanceRequest = healthConnectClient.readRecords(
-                            ReadRecordsRequest(
-                                recordType = DistanceRecord::class,
-                                timeRangeFilter = TimeRangeFilter.between(record.startTime, record.endTime),
-                            ),
-                        )
-                        var totalDistance = 0.0
-                        for (distanceRec in distanceRequest.records) {
-                            totalDistance += distanceRec.distance.inMeters
-                        }
+                Log.w("FLUTTER_HEALTH::HEALTH CONNECT AVAILABLE", "I AM FINISH HERE")
+                var to = 0L;
 
-                        val energyBurnedRequest = healthConnectClient.readRecords(
-                            ReadRecordsRequest(
-                                recordType = TotalCaloriesBurnedRecord::class,
-                                timeRangeFilter = TimeRangeFilter.between(record.startTime, record.endTime),
-                            ),
-                        )
-                        var totalEnergyBurned = 0.0
-                        for (energyBurnedRec in energyBurnedRequest.records) {
-                            totalEnergyBurned += energyBurnedRec.energy.inKilocalories
-                        }
-
-                        // val metadata = (rec as Record).metadata
-                        // Add final datapoint
-                        healthConnectData.add(
-                            // mapOf(
-                            mapOf<String, Any?>(
-                                "workoutActivityType" to (
-                                    workoutTypeMapHealthConnect.filterValues { it == record.exerciseType }.keys.firstOrNull()
-                                        ?: "OTHER"
-                                    ),
-                                "totalDistance" to if (totalDistance == 0.0) null else totalDistance,
-                                "totalDistanceUnit" to "METER",
-                                "totalEnergyBurned" to if (totalEnergyBurned == 0.0) null else totalEnergyBurned,
-                                "totalEnergyBurnedUnit" to "KILOCALORIE",
-                                "unit" to "MINUTES",
-                                "date_from" to rec.startTime.toEpochMilli(),
-                                "date_to" to rec.endTime.toEpochMilli(),
-                                "source_id" to "",
-                                "source_name" to record.metadata.dataOrigin.packageName,
-                            ),
-                        )
+                for (durationResult in response) {
+                    // The result may be null if no data is available in the time range
+                    var totalValue = durationResult.result[metricClassType]
+                    if(totalValue is Length) {
+                        totalValue = totalValue.inMeters
                     }
-                } else {
-                    for (rec in response.records) {
-                        healthConnectData.addAll(convertRecord(rec, dataType))
+
+                    val packageNames = durationResult.result.dataOrigins.joinToString {
+                        origin -> "${origin.packageName}"
                     }
+
+                    val data = mapOf<String, Any>(
+                            "value" to (totalValue ?: 0),
+                            "date_from" to durationResult.startTime.toEpochMilli(),
+                            "date_to" to durationResult.endTime.toEpochMilli(),
+                            "source_name" to packageNames,
+                            "source_id" to "",
+                            "is_manual_entry" to packageNames.contains("user_input")
+                    );
+
+                    healthConnectData.add(data);
                 }
             }
             Handler(context!!.mainLooper).run { result.success(healthConnectData) }
@@ -2213,5 +2189,19 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         // "Vo2Max" to Vo2MaxRecord::class,
         // "Weight" to WeightRecord::class,
         // "WheelchairPushes" to WheelchairPushesRecord::class,
+    )
+
+    val MapToHCAggregateMetric = hashMapOf(
+        HEIGHT to HeightRecord.HEIGHT_AVG,
+        WEIGHT to WeightRecord.WEIGHT_AVG,
+        STEPS to StepsRecord.COUNT_TOTAL,
+        AGGREGATE_STEP_COUNT to StepsRecord.COUNT_TOTAL,
+        ACTIVE_ENERGY_BURNED to ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
+        HEART_RATE to HeartRateRecord.MEASUREMENTS_COUNT,
+        DISTANCE_DELTA to DistanceRecord.DISTANCE_TOTAL,
+        WATER to HydrationRecord.VOLUME_TOTAL,
+        SLEEP_ASLEEP to SleepSessionRecord.SLEEP_DURATION_TOTAL,
+        SLEEP_AWAKE to SleepSessionRecord.SLEEP_DURATION_TOTAL,
+        SLEEP_IN_BED to SleepSessionRecord.SLEEP_DURATION_TOTAL,
     )
 }
