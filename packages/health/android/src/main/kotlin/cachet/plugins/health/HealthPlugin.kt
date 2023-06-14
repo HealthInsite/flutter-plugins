@@ -939,6 +939,11 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
     }
 
     private fun getIntervalData(call: MethodCall, result: Result) {
+        if (useHealthConnectIfAvailable && healthConnectAvailable) {
+            getAggregateHCData(call, result)
+            return
+        }
+
         if (context == null) {
             result.success(null)
             return
@@ -1686,6 +1691,76 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
     }
 
     fun getHCData(call: MethodCall, result: Result) {
+        val dataType = call.argument<String>("dataTypeKey")!!
+        val startTime = Instant.ofEpochMilli(call.argument<Long>("startTime")!!)
+        val endTime = Instant.ofEpochMilli(call.argument<Long>("endTime")!!)
+        val healthConnectData = mutableListOf<Map<String, Any?>>()
+        scope.launch {
+            MapToHCType[dataType]?.let { classType ->
+                val request = ReadRecordsRequest(
+                    recordType = classType,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                )
+                val response = healthConnectClient.readRecords(request)
+
+                // Workout needs distance and total calories burned too
+                if (dataType == WORKOUT) {
+                    for (rec in response.records) {
+                        val record = rec as ExerciseSessionRecord
+                        val distanceRequest = healthConnectClient.readRecords(
+                            ReadRecordsRequest(
+                                recordType = DistanceRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(record.startTime, record.endTime),
+                            ),
+                        )
+                        var totalDistance = 0.0
+                        for (distanceRec in distanceRequest.records) {
+                            totalDistance += distanceRec.distance.inMeters
+                        }
+
+                        val energyBurnedRequest = healthConnectClient.readRecords(
+                            ReadRecordsRequest(
+                                recordType = TotalCaloriesBurnedRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(record.startTime, record.endTime),
+                            ),
+                        )
+                        var totalEnergyBurned = 0.0
+                        for (energyBurnedRec in energyBurnedRequest.records) {
+                            totalEnergyBurned += energyBurnedRec.energy.inKilocalories
+                        }
+
+                        // val metadata = (rec as Record).metadata
+                        // Add final datapoint
+                        healthConnectData.add(
+                            // mapOf(
+                            mapOf<String, Any?>(
+                                "workoutActivityType" to (
+                                    workoutTypeMapHealthConnect.filterValues { it == record.exerciseType }.keys.firstOrNull()
+                                        ?: "OTHER"
+                                    ),
+                                "totalDistance" to if (totalDistance == 0.0) null else totalDistance,
+                                "totalDistanceUnit" to "METER",
+                                "totalEnergyBurned" to if (totalEnergyBurned == 0.0) null else totalEnergyBurned,
+                                "totalEnergyBurnedUnit" to "KILOCALORIE",
+                                "unit" to "MINUTES",
+                                "date_from" to rec.startTime.toEpochMilli(),
+                                "date_to" to rec.endTime.toEpochMilli(),
+                                "source_id" to "",
+                                "source_name" to record.metadata.dataOrigin.packageName,
+                            ),
+                        )
+                    }
+                } else {
+                    for (rec in response.records) {
+                        healthConnectData.addAll(convertRecord(rec, dataType))
+                    }
+                }
+            }
+            Handler(context!!.mainLooper).run { result.success(healthConnectData) }
+        }
+    }
+
+    fun getAggregateHCData(call: MethodCall, result: Result) {
         val dataType = call.argument<String>("dataTypeKey")!!
         val startTime = Instant.ofEpochMilli(call.argument<Long>("startTime")!!)
         val endTime = Instant.ofEpochMilli(call.argument<Long>("endTime")!!)
