@@ -53,6 +53,9 @@ enum HealthDataType {
   IRREGULAR_HEART_RATE_EVENT,
   ELECTRODERMAL_ACTIVITY,
   ELECTROCARDIOGRAM,
+
+  // Health Connect
+  TOTAL_CALORIES_BURNED
 }
 
 enum HealthDataAccess {
@@ -133,6 +136,7 @@ const List<HealthDataType> _dataTypeKeysAndroid = [
   HealthDataType.SLEEP_IN_BED,
   HealthDataType.WATER,
   HealthDataType.WORKOUT,
+  HealthDataType.TOTAL_CALORIES_BURNED,
 ];
 
 /// Maps a [HealthDataType] to a [HealthDataUnit].
@@ -190,6 +194,9 @@ const Map<HealthDataType, HealthDataUnit> _dataTypeToUnit = {
   HealthDataType.IRREGULAR_HEART_RATE_EVENT: HealthDataUnit.NO_UNIT,
   HealthDataType.HEART_RATE_VARIABILITY_SDNN: HealthDataUnit.MILLISECOND,
   HealthDataType.ELECTROCARDIOGRAM: HealthDataUnit.VOLT,
+
+  // Health Connect
+  HealthDataType.TOTAL_CALORIES_BURNED: HealthDataUnit.KILOCALORIE,
 };
 
 const PlatformTypeJsonValue = {

@@ -92,6 +92,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
     private var SLEEP_AWAKE = "SLEEP_AWAKE"
     private var SLEEP_IN_BED = "SLEEP_IN_BED"
     private var WORKOUT = "WORKOUT"
+    private var TOTAL_CALORIES_BURNED = "TOTAL_CALORIES_BURNED"
 
     val workoutTypeMap = mapOf(
         "AEROBICS" to FitnessActivities.AEROBICS,
@@ -1776,9 +1777,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 )
                 val response = healthConnectClient.aggregateGroupByDuration(request)
 
-                Log.w("FLUTTER_HEALTH::HEALTH CONNECT AVAILABLE", "I AM FINISH HERE")
-                var to = 0L;
-
                 for (durationResult in response) {
                     // The result may be null if no data is available in the time range
                     var totalValue = durationResult.result[metricClassType]
@@ -1798,7 +1796,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                             "source_id" to "",
                             "is_manual_entry" to packageNames.contains("user_input")
                     );
-
                     healthConnectData.add(data);
                 }
             }
@@ -1918,6 +1915,26 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     "source_name" to metadata.dataOrigin.packageName,
                 ),
             )
+            is TotalCaloriesBurnedRecord -> return listOf(
+                mapOf<String, Any>(
+                    "value" to record.energy.inKilocalories,
+                    "date_from" to record.startTime.toEpochMilli(),
+                    "date_to" to record.endTime.toEpochMilli(),
+                    "source_id" to "",
+                    "source_name" to metadata.dataOrigin.packageName,
+                ),
+            )
+            is BasalMetabolicRateRecord -> return listOf(
+                mapOf<String, Any>(
+                    "value" to record.basalMetabolicRate.inKilocaloriesPerDay,
+                    "date_from" to record.time.toEpochMilli(),
+                    "date_to" to record.time.toEpochMilli(),
+                    "source_id" to "",
+                    "source_name" to metadata.dataOrigin.packageName,
+                ),
+            )
+
+
             // is SleepSessionRecord -> return listOf(mapOf<String, Any>("value" to ,
             //                                             "date_from" to ,
             //                                             "date_to" to ,
@@ -2012,6 +2029,13 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             // SLEEP_AWAKE -> SleepSessionRecord()
             // SLEEP_IN_BED -> SleepSessionRecord()
             // AGGREGATE_STEP_COUNT -> StepsRecord()
+            TOTAL_CALORIES_BURNED -> TotalCaloriesBurnedRecord(
+                startTime = Instant.ofEpochMilli(startTime),
+                endTime = Instant.ofEpochMilli(endTime),
+                energy = Energy.kilocalories(value),
+                startZoneOffset = null,
+                endZoneOffset = null,
+            )
             BLOOD_PRESSURE_SYSTOLIC -> throw IllegalArgumentException("You must use the [writeBloodPressure] API ")
             BLOOD_PRESSURE_DIASTOLIC -> throw IllegalArgumentException("You must use the [writeBloodPressure] API ")
             WORKOUT -> throw IllegalArgumentException("You must use the [writeWorkoutData] API ")
@@ -2151,6 +2175,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         SLEEP_AWAKE to SleepSessionRecord::class,
         SLEEP_IN_BED to SleepSessionRecord::class,
         WORKOUT to ExerciseSessionRecord::class,
+        TOTAL_CALORIES_BURNED to TotalCaloriesBurnedRecord::class
         // MOVE_MINUTES to TODO: Find alternative?
         // TODO: Implement remaining types
         // "ActiveCaloriesBurned" to ActiveCaloriesBurnedRecord::class,
@@ -2203,5 +2228,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         SLEEP_ASLEEP to SleepSessionRecord.SLEEP_DURATION_TOTAL,
         SLEEP_AWAKE to SleepSessionRecord.SLEEP_DURATION_TOTAL,
         SLEEP_IN_BED to SleepSessionRecord.SLEEP_DURATION_TOTAL,
+        TOTAL_CALORIES_BURNED to TotalCaloriesBurnedRecord.ENERGY_TOTAL
     )
 }

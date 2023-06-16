@@ -67,4 +67,6 @@ const List<HealthDataType> dataTypesAndroid = [
   // HealthDataType.SLEEP_IN_BED,
   HealthDataType.WATER,
   HealthDataType.WORKOUT,
+
+  HealthDataType.TOTAL_CALORIES_BURNED,
 ];
