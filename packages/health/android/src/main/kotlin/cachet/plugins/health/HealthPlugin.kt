@@ -1783,6 +1783,9 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     if(totalValue is Length) {
                         totalValue = totalValue.inMeters
                     }
+                    else if(totalValue is Energy) {
+                        totalValue = totalValue.inKilocalories
+                    }
 
                     val packageNames = durationResult.result.dataOrigins.joinToString {
                         origin -> "${origin.packageName}"
