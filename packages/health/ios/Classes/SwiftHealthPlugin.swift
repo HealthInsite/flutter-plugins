@@ -6,10 +6,12 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
 
   let healthStore = HKHealthStore()
   var healthDataTypes = [HKSampleType]()
+  var healthDataQuantityTypes = [HKQuantityType]()
   var heartRateEventTypes = Set<HKSampleType>()
   var headacheType = Set<HKSampleType>()
   var allDataTypes = Set<HKSampleType>()
   var dataTypesDict: [String: HKSampleType] = [:]
+  var dataQuantityTypesDict: [String: HKQuantityType] = [:]
   var unitDict: [String: HKUnit] = [:]
   var workoutActivityTypeMap: [String: HKWorkoutActivityType] = [:]
 
@@ -42,11 +44,16 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
   let WALKING_HEART_RATE = "WALKING_HEART_RATE"
   let WEIGHT = "WEIGHT"
   let DISTANCE_WALKING_RUNNING = "DISTANCE_WALKING_RUNNING"
+  let DISTANCE_SWIMMING = "DISTANCE_SWIMMING"
+  let DISTANCE_CYCLING = "DISTANCE_CYCLING"
   let FLIGHTS_CLIMBED = "FLIGHTS_CLIMBED"
   let WATER = "WATER"
   let MINDFULNESS = "MINDFULNESS"
   let SLEEP_IN_BED = "SLEEP_IN_BED"
   let SLEEP_ASLEEP = "SLEEP_ASLEEP"
+  let SLEEP_ASLEEP_CORE = "SLEEP_ASLEEP_CORE"
+  let SLEEP_ASLEEP_DEEP = "SLEEP_ASLEEP_DEEP"
+  let SLEEP_ASLEEP_REM = "SLEEP_ASLEEP_REM"
   let SLEEP_AWAKE = "SLEEP_AWAKE"
   let SLEEP_DEEP = "SLEEP_DEEP"
   let SLEEP_REM = "SLEEP_REM"
@@ -139,6 +146,11 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
       getData(call: call, result: result)
     }
 
+    /// Handle getIntervalData
+    else if (call.method.elementsEqual("getIntervalData")){
+      getIntervalData(call: call, result: result)
+    }
+
     /// Handle getTotalStepsInInterval
     else if call.method.elementsEqual("getTotalStepsInInterval") {
       getTotalStepsInInterval(call: call, result: result)
@@ -172,6 +184,12 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     /// Handle delete data
     else if call.method.elementsEqual("delete") {
       try! delete(call: call, result: result)
+    }
+
+    /// Disconnect
+    else if (call.method.elementsEqual("disconnect")){
+        // Do nothing.
+        result(true)
     }
 
   }
@@ -474,6 +492,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
     let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
     let limit = (arguments?["limit"] as? Int) ?? HKObjectQueryNoLimit
+    let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
 
 
     // Convert dates from milliseconds to Date()
@@ -486,8 +505,12 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
       unit = unitDict[dataUnitKey]
     }
 
-    let predicate = HKQuery.predicateForSamples(
+    var predicate = HKQuery.predicateForSamples(
       withStart: dateFrom, end: dateTo, options: .strictStartDate)
+    if (!includeManualEntry) {
+      let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
+      predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
+    }
     let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
 
     let query = HKSampleQuery(
@@ -506,6 +529,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
             "source_id": sample.sourceRevision.source.bundleIdentifier,
             "source_name": sample.sourceRevision.source.name,
+            "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
           ]
         }
         DispatchQueue.main.async {
@@ -519,6 +543,15 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         }
         if dataTypeKey == self.SLEEP_ASLEEP {
           samplesCategory = samplesCategory.filter { $0.value == 1 }
+        }
+        if dataTypeKey == self.SLEEP_ASLEEP_CORE {
+          samplesCategory = samplesCategory.filter { $0.value == 3 }
+        }
+        if dataTypeKey == self.SLEEP_ASLEEP_DEEP {
+            samplesCategory = samplesCategory.filter { $0.value == 4 }
+        }
+        if dataTypeKey == self.SLEEP_ASLEEP_REM {
+            samplesCategory = samplesCategory.filter { $0.value == 5 }
         }
         if dataTypeKey == self.SLEEP_AWAKE {
           samplesCategory = samplesCategory.filter { $0.value == 2 }
@@ -552,6 +585,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
             "source_id": sample.sourceRevision.source.bundleIdentifier,
             "source_name": sample.sourceRevision.source.name,
+            "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
           ]
         }
         DispatchQueue.main.async {
@@ -574,6 +608,10 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
             "source_id": sample.sourceRevision.source.bundleIdentifier,
             "source_name": sample.sourceRevision.source.name,
+            "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil,
+            "workout_type": self.getWorkoutType(type: sample.workoutActivityType),
+            "total_distance": sample.totalDistance != nil ? Int(sample.totalDistance!.doubleValue(for: HKUnit.meter())) : 0,
+            "total_energy_burned": sample.totalEnergyBurned != nil ? Int(sample.totalEnergyBurned!.doubleValue(for: HKUnit.kilocalorie())) : 0
           ]
         }
 
@@ -658,6 +696,65 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
       "source_id": sample.sourceRevision.source.bundleIdentifier,
       "source_name": sample.sourceRevision.source.name,
     ]
+  }
+
+  func getIntervalData(call: FlutterMethodCall, result: @escaping FlutterResult) {
+      let arguments = call.arguments as? NSDictionary
+      let dataTypeKey = (arguments?["dataTypeKey"] as? String) ?? "DEFAULT"
+      let dataUnitKey = (arguments?["dataUnitKey"] as? String)
+      let startDate = (arguments?["startTime"] as? NSNumber) ?? 0
+      let endDate = (arguments?["endTime"] as? NSNumber) ?? 0
+      let intervalInSecond = (arguments?["interval"] as? Int) ?? 1
+      let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
+
+      // Set interval in seconds.
+      var interval = DateComponents()
+      interval.second = intervalInSecond
+
+      // Convert dates from milliseconds to Date()
+      let dateFrom = Date(timeIntervalSince1970: startDate.doubleValue / 1000)
+      let dateTo = Date(timeIntervalSince1970: endDate.doubleValue / 1000)
+        
+      let quantityType: HKQuantityType! = dataQuantityTypesDict[dataTypeKey]
+      var predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: [])
+      if (!includeManualEntry) {
+          let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
+          predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
+      }
+
+      let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
+        
+      query.initialResultsHandler = {
+          _, statisticCollectionOrNil, error in
+
+          switch statisticCollectionOrNil {
+          case let (collection as HKStatisticsCollection) as Any:
+              var dictionaries = [[String:Any]]()
+              collection.enumerateStatistics(from: dateFrom, to: dateTo) {
+                  statisticData, _ in
+                  if let quantity = statisticData.sumQuantity() {
+                      let unit = self.unitDict[dataUnitKey!]                        
+                      let dict = [
+                      "value": quantity.doubleValue(for: unit!),
+                      "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
+                      "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
+                      "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
+                      "source_name": statisticData.sources?.first?.name ?? ""
+                      ] as [String : Any]
+                      dictionaries.append(dict)
+                  }
+              }
+              DispatchQueue.main.async {
+                  result(dictionaries)
+              }
+
+          default:
+              DispatchQueue.main.async {
+                  result(nil)
+              }
+          }
+      }
+      HKHealthStore().execute(query)
   }
 
   func getTotalStepsInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -893,11 +990,16 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
       dataTypesDict[WEIGHT] = HKSampleType.quantityType(forIdentifier: .bodyMass)!
       dataTypesDict[DISTANCE_WALKING_RUNNING] = HKSampleType.quantityType(
         forIdentifier: .distanceWalkingRunning)!
+      dataTypesDict[DISTANCE_SWIMMING] = HKSampleType.quantityType(forIdentifier: .distanceSwimming)!
+      dataTypesDict[DISTANCE_CYCLING] = HKSampleType.quantityType(forIdentifier: .distanceCycling)!
       dataTypesDict[FLIGHTS_CLIMBED] = HKSampleType.quantityType(forIdentifier: .flightsClimbed)!
       dataTypesDict[WATER] = HKSampleType.quantityType(forIdentifier: .dietaryWater)!
       dataTypesDict[MINDFULNESS] = HKSampleType.categoryType(forIdentifier: .mindfulSession)!
       dataTypesDict[SLEEP_IN_BED] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
       dataTypesDict[SLEEP_ASLEEP] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
+      dataTypesDict[SLEEP_ASLEEP_CORE] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
+      dataTypesDict[SLEEP_ASLEEP_DEEP] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
+      dataTypesDict[SLEEP_ASLEEP_REM] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
       dataTypesDict[SLEEP_AWAKE] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
       dataTypesDict[SLEEP_DEEP] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
       dataTypesDict[SLEEP_REM] = HKSampleType.categoryType(forIdentifier: .sleepAnalysis)!
@@ -907,6 +1009,41 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
 
       healthDataTypes = Array(dataTypesDict.values)
     }
+    
+    // Set up iOS 11 specific types (ordinary health data quantity types)
+    if #available(iOS 11.0, *) {
+      dataQuantityTypesDict[ACTIVE_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+      dataQuantityTypesDict[BASAL_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned)!
+      dataQuantityTypesDict[BLOOD_GLUCOSE] = HKQuantityType.quantityType(forIdentifier: .bloodGlucose)!
+      dataQuantityTypesDict[BLOOD_OXYGEN] = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)!
+      dataQuantityTypesDict[BLOOD_PRESSURE_DIASTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureDiastolic)!
+      dataQuantityTypesDict[BLOOD_PRESSURE_SYSTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureSystolic)!
+      dataQuantityTypesDict[BODY_FAT_PERCENTAGE] = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage)!
+      dataQuantityTypesDict[BODY_MASS_INDEX] = HKQuantityType.quantityType(forIdentifier: .bodyMassIndex)!
+      dataQuantityTypesDict[BODY_TEMPERATURE] = HKQuantityType.quantityType(forIdentifier: .bodyTemperature)!
+      dataQuantityTypesDict[DIETARY_CARBS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryCarbohydrates)!
+      dataQuantityTypesDict[DIETARY_ENERGY_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+      dataQuantityTypesDict[DIETARY_FATS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryFatTotal)!
+      dataQuantityTypesDict[DIETARY_PROTEIN_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryProtein)!
+      dataQuantityTypesDict[ELECTRODERMAL_ACTIVITY] = HKQuantityType.quantityType(forIdentifier: .electrodermalActivity)!
+      dataQuantityTypesDict[FORCED_EXPIRATORY_VOLUME] = HKQuantityType.quantityType(forIdentifier: .forcedExpiratoryVolume1)!
+      dataQuantityTypesDict[HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+      dataQuantityTypesDict[HEART_RATE_VARIABILITY_SDNN] = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
+      dataQuantityTypesDict[HEIGHT] = HKQuantityType.quantityType(forIdentifier: .height)!
+      dataQuantityTypesDict[RESTING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .restingHeartRate)!
+      dataQuantityTypesDict[STEPS] = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+      dataQuantityTypesDict[WAIST_CIRCUMFERENCE] = HKQuantityType.quantityType(forIdentifier: .waistCircumference)!
+      dataQuantityTypesDict[WALKING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .walkingHeartRateAverage)!
+      dataQuantityTypesDict[WEIGHT] = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+      dataQuantityTypesDict[DISTANCE_WALKING_RUNNING] = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+      dataQuantityTypesDict[DISTANCE_SWIMMING] = HKQuantityType.quantityType(forIdentifier: .distanceSwimming)!
+      dataQuantityTypesDict[DISTANCE_CYCLING] = HKQuantityType.quantityType(forIdentifier: .distanceCycling)!          
+      dataQuantityTypesDict[FLIGHTS_CLIMBED] = HKQuantityType.quantityType(forIdentifier: .flightsClimbed)!
+      dataQuantityTypesDict[WATER] = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+
+      healthDataQuantityTypes = Array(dataQuantityTypesDict.values)
+    }
+
     // Set up heart rate data types specific to the apple watch, requires iOS 12
     if #available(iOS 12.2, *) {
       dataTypesDict[HIGH_HEART_RATE_EVENT] = HKSampleType.categoryType(
@@ -950,5 +1087,160 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
     // Concatenate heart events, headache and health data types (both may be empty)
     allDataTypes = Set(heartRateEventTypes + healthDataTypes)
     allDataTypes = allDataTypes.union(headacheType)
+  }
+
+  func getWorkoutType(type: HKWorkoutActivityType) -> String {
+    switch type {
+      case .americanFootball:
+        return "americanFootball"
+      case .archery:
+        return "archery"
+      case .australianFootball:
+        return "australianFootball"
+      case .badminton:
+        return "badminton"
+      case .baseball:
+        return "baseball"
+      case .basketball:
+        return "basketball"
+      case .bowling:
+        return "bowling"
+      case .boxing:
+        return "boxing"
+      case .climbing:
+        return "climbing"
+      case .cricket:
+        return "cricket"
+      case .crossTraining:
+        return "crossTraining"
+      case .curling:
+        return "curling"
+      case .cycling:
+        return "cycling"
+      case .dance:
+        return "dance"
+      case .danceInspiredTraining:
+        return "danceInspiredTraining"
+      case .elliptical:
+        return "elliptical"
+      case .equestrianSports:
+        return "equestrianSports"
+      case .fencing:
+        return "fencing"
+      case .fishing:
+        return "fishing"
+      case .functionalStrengthTraining:
+        return "functionalStrengthTraining"
+      case .golf:
+        return "golf"
+      case .gymnastics:
+        return "gymnastics"
+      case .handball:
+        return "handball"
+      case .hiking:
+        return "hiking"
+      case .hockey:
+        return "hockey"
+      case .hunting:
+        return "hunting"
+      case .lacrosse:
+        return "lacrosse"
+      case .martialArts:
+        return "martialArts"
+      case .mindAndBody:
+        return "mindAndBody"
+      case .mixedMetabolicCardioTraining:
+        return "mixedMetabolicCardioTraining"
+      case .paddleSports:
+        return "paddleSports"
+      case .play:
+        return "play"
+      case .preparationAndRecovery:
+        return "preparationAndRecovery"
+      case .racquetball:
+        return "racquetball"
+      case .rowing:
+        return "rowing"
+      case .rugby:
+        return "rugby"
+      case .running:
+        return "running"
+      case .sailing:
+        return "sailing"
+      case .skatingSports:
+        return "skatingSports"
+      case .snowSports:
+        return "snowSports"
+      case .soccer:
+        return "soccer"
+      case .softball:
+        return "softball"
+      case .squash:
+        return "squash"
+      case .stairClimbing:
+        return "stairClimbing"
+      case .surfingSports:
+        return "surfingSports"
+      case .swimming:
+        return "swimming"
+      case .tableTennis:
+        return "tableTennis"
+      case .tennis:
+        return "tennis"
+      case .trackAndField:
+        return "trackAndField"
+      case .traditionalStrengthTraining:
+        return "traditionalStrengthTraining"
+      case .volleyball:
+        return "volleyball"
+      case .walking:
+        return "walking"
+      case .waterFitness:
+        return "waterFitness"
+      case .waterPolo:
+        return "waterPolo"
+      case .waterSports:
+        return "waterSports"
+      case .wrestling:
+        return "wrestling"
+      case .yoga:
+        return "yoga"
+      case .barre:
+        return "barre"
+      case .coreTraining:
+        return "coreTraining"
+      case .crossCountrySkiing:
+        return "crossCountrySkiing"
+      case .downhillSkiing:
+        return "downhillSkiing"
+      case .flexibility:
+        return "flexibility"
+      case .highIntensityIntervalTraining:
+        return "highIntensityIntervalTraining"
+      case .jumpRope:
+        return "jumpRope"
+      case .kickboxing:
+        return "kickboxing"
+      case .pilates:
+        return "pilates"
+      case .snowboarding:
+        return "snowboarding"
+      case .stairs:
+        return "stairs"
+      case .stepTraining:
+        return "stepTraining"
+      case .wheelchairWalkPace:
+        return "wheelchairWalkPace"
+      case .wheelchairRunPace:
+        return "wheelchairRunPace"
+      case .taiChi:
+        return "taiChi"
+      case .mixedCardio:
+        return "mixedCardio"
+      case .handCycling:
+        return "handCycling"
+      default:
+        return "other"
+    }
   }
 }
