@@ -567,6 +567,7 @@ class HealthFactory {
       'includeManualEntry': includeManualEntry
     };
     final fetchedDataPoints = await _channel.invokeMethod('getData', args);
+
     if (fetchedDataPoints != null) {
       final mesg = <String, dynamic>{
         "dataType": dataType,
@@ -730,6 +731,10 @@ class HealthFactory {
         return 1;
       case HealthDataType.SLEEP_AWAKE:
         return 2;
+      case HealthDataType.SLEEP_DEEP:
+        return 3;
+      case HealthDataType.SLEEP_REM:
+        return 4;
       case HealthDataType.SLEEP_ASLEEP_CORE:
         return 3;
       case HealthDataType.SLEEP_ASLEEP_DEEP:

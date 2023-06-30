@@ -1,3 +1,8 @@
+## 7.0.0
+
+- Merged PR #722
+- Added deep, light, REM, and out of bed sleep to iOS and Android HealthConnect
+
 ## 6.0.0
 
 - Fixed issues #[694](https://github.com/cph-cachet/flutter-plugins/issues/694), #[696](https://github.com/cph-cachet/flutter-plugins/issues/696), #[697](https://github.com/cph-cachet/flutter-plugins/issues/697), #[698](https://github.com/cph-cachet/flutter-plugins/issues/698)

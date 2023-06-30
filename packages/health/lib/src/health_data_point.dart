@@ -38,7 +38,11 @@ class HealthDataPoint {
         type == HealthDataType.HEADACHE_SEVERE ||
         type == HealthDataType.SLEEP_IN_BED ||
         type == HealthDataType.SLEEP_ASLEEP ||
-        type == HealthDataType.SLEEP_AWAKE) {
+        type == HealthDataType.SLEEP_AWAKE ||
+        type == HealthDataType.SLEEP_DEEP ||
+        type == HealthDataType.SLEEP_LIGHT ||
+        type == HealthDataType.SLEEP_REM ||
+        type == HealthDataType.SLEEP_OUT_OF_BED) {
       this._value = _convertMinutes();
     }
   }
@@ -93,7 +97,7 @@ class HealthDataPoint {
       };
 
   @override
-  String toString() => """${this.runtimeType} - 
+  String toString() => """${this.runtimeType} -
     value: ${value.toString()},
     unit: ${unit.name},
     dateFrom: $dateFrom,
