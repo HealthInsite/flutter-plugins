@@ -1731,6 +1731,17 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                             totalEnergyBurned += energyBurnedRec.energy.inKilocalories
                         }
 
+                        val stepRequest = healthConnectClient.readRecords(
+                            ReadRecordsRequest(
+                                recordType = StepsRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(record.startTime, record.endTime),
+                            ),
+                        )
+                        var totalSteps = 0.0
+                        for (stepRec in stepRequest.records) {
+                            totalSteps += stepRec.count
+                        }
+
                         // val metadata = (rec as Record).metadata
                         // Add final datapoint
                         healthConnectData.add(
@@ -1744,6 +1755,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                                 "totalDistanceUnit" to "METER",
                                 "totalEnergyBurned" to if (totalEnergyBurned == 0.0) null else totalEnergyBurned,
                                 "totalEnergyBurnedUnit" to "KILOCALORIE",
+                                "totalSteps" to if (totalSteps == 0.0) null else totalSteps,
+                                "totalStepsUnit" to "COUNT",
                                 "unit" to "MINUTES",
                                 "date_from" to rec.startTime.toEpochMilli(),
                                 "date_to" to rec.endTime.toEpochMilli(),
