@@ -19,7 +19,7 @@ class HealthFactory {
   static PlatformType _platformType =
       Platform.isAndroid ? PlatformType.ANDROID : PlatformType.IOS;
 
-  // The plugin was created to use Health Connect (if true) or Google Fit (if false).
+  /// The plugin was created to use Health Connect (if true) or Google Fit (if false).
   bool get useHealthConnectIfAvailable => _useHealthConnectIfAvailable;
 
   HealthFactory({bool useHealthConnectIfAvailable = false}) {
@@ -152,10 +152,14 @@ class HealthFactory {
       for (int i = 0; i < types.length; i++) {
         final type = types[i];
         final permission = permissions[i];
-        if (type == HealthDataType.ELECTROCARDIOGRAM &&
+        if ((type == HealthDataType.ELECTROCARDIOGRAM ||
+                type == HealthDataType.HIGH_HEART_RATE_EVENT ||
+                type == HealthDataType.LOW_HEART_RATE_EVENT ||
+                type == HealthDataType.IRREGULAR_HEART_RATE_EVENT ||
+                type == HealthDataType.WALKING_HEART_RATE) &&
             permission != HealthDataAccess.READ) {
           throw ArgumentError(
-              'Requesting WRITE permission on ELECTROCARDIOGRAM is not allowed.');
+              'Requesting WRITE permission on ELECTROCARDIOGRAM / HIGH_HEART_RATE_EVENT / LOW_HEART_RATE_EVENT / IRREGULAR_HEART_RATE_EVENT / WALKING_HEART_RATE is not allowed.');
         }
       }
     }
@@ -175,6 +179,7 @@ class HealthFactory {
     return isAuthorized ?? false;
   }
 
+  /// Obtains health and weight if BMI is requested on Android.
   static void _handleBMI(List<HealthDataType> mTypes, List<int> mPermissions) {
     final index = mTypes.indexOf(HealthDataType.BODY_MASS_INDEX);
 
@@ -556,7 +561,7 @@ class HealthFactory {
         activitySegmentDuration, includeManualEntry);
   }
 
-  /// The main function for fetching health data
+  /// Fetches data points from Android/iOS native code.
   Future<List<HealthDataPoint>> _dataQuery(DateTime startTime, DateTime endTime,
       HealthDataType dataType, bool includeManualEntry) async {
     final args = <String, dynamic>{
@@ -723,6 +728,7 @@ class HealthFactory {
     return stepsCount;
   }
 
+  /// Assigns numbers to specific [HealthDataType]s.
   int _alignValue(HealthDataType type) {
     switch (type) {
       case HealthDataType.SLEEP_IN_BED:

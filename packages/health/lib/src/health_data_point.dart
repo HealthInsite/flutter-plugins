@@ -47,6 +47,7 @@ class HealthDataPoint {
     }
   }
 
+  /// Converts dateTo - dateFrom to minutes.
   NumericHealthValue _convertMinutes() {
     int ms = dateTo.millisecondsSinceEpoch - dateFrom.millisecondsSinceEpoch;
     return NumericHealthValue(ms / (1000 * 60));
@@ -110,7 +111,7 @@ class HealthDataPoint {
     isManualEntry: $isManualEntry
     workoutSummary: ${workoutSummary?.toString()}""";
 
-  // / The quantity value of the data point
+  /// The quantity value of the data point
   HealthValue get value => _value;
 
   /// The start of the time interval
