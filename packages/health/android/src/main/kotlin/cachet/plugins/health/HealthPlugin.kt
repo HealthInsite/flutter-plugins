@@ -49,6 +49,8 @@ import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.*
 
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
+
 
 const val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1111
 const val HEALTH_CONNECT_RESULT_CODE = 16969
