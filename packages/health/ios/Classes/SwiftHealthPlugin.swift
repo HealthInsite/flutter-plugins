@@ -726,7 +726,13 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
       let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
         
       query.initialResultsHandler = { 
-        [unowned self] _, statisticCollectionOrNil, error in
+        [weak self] _, statisticCollectionOrNil, error in
+        guard let self = self else {
+          // Handle the case where self became nil.
+          print("Self is nil")
+          return
+        }
+
         // Error detected.
         if let error = error {
           print("Query error: \(error.localizedDescription)")
@@ -746,7 +752,12 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
 
         var dictionaries = [[String: Any]]()
         collection.enumerateStatistics(from: dateFrom, to: dateTo) {
-          statisticData, _ in
+          [weak self] statisticData, _ in
+          guard let self = self else {
+            // Handle the case where self became nil.
+            print("Self is nil during enumeration")
+            return
+          }
           if let quantity = statisticData.sumQuantity(),
               let dataUnitKey = dataUnitKey,
               let unit = self.unitDict[dataUnitKey] {
