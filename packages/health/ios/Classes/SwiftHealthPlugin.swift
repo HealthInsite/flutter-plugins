@@ -725,36 +725,45 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
 
       let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
         
-      query.initialResultsHandler = {
-          _, statisticCollectionOrNil, error in
-
-          switch statisticCollectionOrNil {
-          case let (collection as HKStatisticsCollection) as Any:
-              var dictionaries = [[String:Any]]()
-              collection.enumerateStatistics(from: dateFrom, to: dateTo) {
-                  statisticData, _ in
-                  if let quantity = statisticData.sumQuantity() {
-                      let unit = self.unitDict[dataUnitKey!]                        
-                      let dict = [
-                      "value": quantity.doubleValue(for: unit!),
-                      "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
-                      "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
-                      "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
-                      "source_name": statisticData.sources?.first?.name ?? ""
-                      ] as [String : Any]
-                      dictionaries.append(dict)
-                  }
-              }
-              DispatchQueue.main.async {
-                  result(dictionaries)
-              }
-
-          default:
-              DispatchQueue.main.async {
-                  result(nil)
-              }
+      query.initialResultsHandler = { 
+        [unowned self] _, statisticCollectionOrNil, error in
+        // Error detected.
+        if let error = error {
+          print("Query error: \(error.localizedDescription)")
+          DispatchQueue.main.async {
+            result(nil)
           }
-      }
+          return
+        }
+
+        guard let collection = statisticCollectionOrNil as? HKStatisticsCollection else {
+          print("Unexpected result from query")
+          DispatchQueue.main.async {
+            result(nil)
+          }
+          return
+        }
+
+        var dictionaries = [[String: Any]]()
+        collection.enumerateStatistics(from: dateFrom, to: dateTo) {
+          statisticData, _ in
+          if let quantity = statisticData.sumQuantity(),
+              let dataUnitKey = dataUnitKey,
+              let unit = self.unitDict[dataUnitKey] {
+              let dict = [
+                  "value": quantity.doubleValue(for: unit),
+                  "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
+                  "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
+                  "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
+                  "source_name": statisticData.sources?.first?.name ?? ""
+              ]
+              dictionaries.append(dict)
+            }
+        }
+        DispatchQueue.main.async {
+          result(dictionaries)
+        }
+    }
       HKHealthStore().execute(query)
   }
 
