@@ -1027,13 +1027,13 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         val googleSignInAccount = GoogleSignIn.getAccountForExtension(context!!.applicationContext, fitnessOptions)
 
         Fitness.getHistoryClient(context!!.applicationContext, googleSignInAccount)
-                .readData(DataReadRequest.Builder()
-                        .aggregate(dataType)
-                        .bucketByTime(interval, TimeUnit.SECONDS)
-                        .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-                        .build())
-                .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
-                .addOnFailureListener(errHandler(result, "There was an error getting the interval data!"))
+            .readData(DataReadRequest.Builder()
+                .aggregate(dataType)
+                .bucketByTime(interval, TimeUnit.SECONDS)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                .build())
+            .addOnSuccessListener (threadPoolExecutor!!, intervalDataHandler(dataType, field, includeManualEntry, result))
+            .addOnFailureListener(errHandler(result, "There was an error getting the interval data!"))
     }
 
     private fun getAggregateData(call: MethodCall, result: Result) {
@@ -1057,8 +1057,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         val googleSignInAccount = GoogleSignIn.getAccountForExtension(context!!.applicationContext, fitnessOptions)
 
         val readWorkoutsRequest = DataReadRequest.Builder()
-                .bucketByActivitySegment(activitySegmentDuration, TimeUnit.SECONDS)
-                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .bucketByActivitySegment(activitySegmentDuration, TimeUnit.SECONDS)
+            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
 
         for (type in types) {
             val dataType = keyToHealthDataType(type)
@@ -1066,9 +1066,9 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         }
 
         Fitness.getHistoryClient(context!!.applicationContext, googleSignInAccount)
-                .readData(readWorkoutsRequest.build())
-                .addOnSuccessListener (threadPoolExecutor!!, aggregateDataHandler(includeManualEntry, result))
-                .addOnFailureListener(errHandler(result, "There was an error getting the aggregate data!"))
+            .readData(readWorkoutsRequest.build())
+            .addOnSuccessListener (threadPoolExecutor!!, aggregateDataHandler(includeManualEntry, result))
+            .addOnFailureListener(errHandler(result, "There was an error getting the aggregate data!"))
     }
 
     private fun dataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
@@ -1079,7 +1079,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             var dataPoints = dataSet.dataPoints
             if(!includeManualEntry) {
                 dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                !dataPoint.originalDataSource.streamName.contains("user_input")
+                    !dataPoint.originalDataSource.streamName.contains("user_input")
                 }
             }
             // / For each data point, extract the contents and send them to Flutter, along with date and unit.
@@ -1209,99 +1209,99 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         }
 
     private fun intervalDataHandler(dataType: DataType, field: Field, includeManualEntry: Boolean, result: Result) =
-            OnSuccessListener { response: DataReadResponse ->
-                val healthData = mutableListOf<HashMap<String, Any>>()
-                for(bucket in response.buckets) {
-                    /// Fetch all data points for the specified DataType
-                    //val dataSet = response.getDataSet(dataType)
-                    for (dataSet in bucket.dataSets) {
-                        /// For each data point, extract the contents and send them to Flutter, along with date and unit.
-                        var dataPoints = dataSet.dataPoints
-                        if (!includeManualEntry) {
-                            dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                !dataPoint.originalDataSource.streamName.contains("user_input")
-                            }
+        OnSuccessListener { response: DataReadResponse ->
+            val healthData = mutableListOf<HashMap<String, Any>>()
+            for(bucket in response.buckets) {
+                /// Fetch all data points for the specified DataType
+                //val dataSet = response.getDataSet(dataType)
+                for (dataSet in bucket.dataSets) {
+                    /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+                    var dataPoints = dataSet.dataPoints
+                    if (!includeManualEntry) {
+                        dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+                            !dataPoint.originalDataSource.streamName.contains("user_input")
                         }
-                        for (dataPoint in dataPoints) {
-                            for (field in dataPoint.dataType.fields) {
-                                val healthDataItems = dataPoints.mapIndexed { _, dataPoint ->
-                                    return@mapIndexed hashMapOf(
-                                            "value" to getHealthDataValue(dataPoint, field),
-                                            "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
-                                            "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
-                                            "source_name" to (dataPoint.originalDataSource.appPackageName
-                                                    ?: (dataPoint.originalDataSource.device?.model
-                                                            ?: "")),
-                                            "source_id" to dataPoint.originalDataSource.streamIdentifier,
-                                            "is_manual_entry" to dataPoint.originalDataSource.streamName.contains("user_input")
-                                    )
-                                }
-                                healthData.addAll(healthDataItems)
+                    }
+                    for (dataPoint in dataPoints) {
+                        for (field in dataPoint.dataType.fields) {
+                            val healthDataItems = dataPoints.mapIndexed { _, dataPoint ->
+                                return@mapIndexed hashMapOf(
+                                    "value" to getHealthDataValue(dataPoint, field),
+                                    "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
+                                    "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
+                                    "source_name" to (dataPoint.originalDataSource.appPackageName
+                                        ?: (dataPoint.originalDataSource.device?.model
+                                            ?: "")),
+                                    "source_id" to dataPoint.originalDataSource.streamIdentifier,
+                                    "is_manual_entry" to dataPoint.originalDataSource.streamName.contains("user_input")
+                                )
                             }
+                            healthData.addAll(healthDataItems)
                         }
                     }
                 }
-                Handler(context!!.mainLooper).run { result.success(healthData) }
             }
-  
-  private fun aggregateDataHandler(includeManualEntry: Boolean, result: Result) =
-            OnSuccessListener { response: DataReadResponse ->
-                val healthData = mutableListOf<HashMap<String, Any>>()
-                for(bucket in response.buckets) {
-                    var sourceName:Any = ""
-                    var sourceId:Any = ""
-                    var isManualEntry:Any = false
-                    var totalSteps:Any = 0
-                    var totalDistance:Any = 0
-                    var totalEnergyBurned:Any = 0
-                    /// Fetch all data points for the specified DataType
-                    for (dataSet in bucket.dataSets) {
-                        /// For each data point, extract the contents and send them to Flutter, along with date and unit.
-                        var dataPoints = dataSet.dataPoints
-                        if (!includeManualEntry) {
-                            dataPoints = dataPoints.filterIndexed { _, dataPoint ->
-                                !dataPoint.originalDataSource.streamName.contains("user_input")
-                            }
-                        }
-                        for (dataPoint in dataPoints) {
-                            sourceName = (dataPoint.originalDataSource.appPackageName
-                                    ?: (dataPoint.originalDataSource.device?.model
-                                            ?: ""))
-                            sourceId = dataPoint.originalDataSource.streamIdentifier
-                            isManualEntry = dataPoint.originalDataSource.streamName.contains("user_input")
-                            for (field in dataPoint.dataType.fields) {
-                                when(field) {
-                                    getField(STEPS) -> {
-                                        totalSteps = getHealthDataValue(dataPoint, field);
-                                    }
-                                    getField(DISTANCE_DELTA) -> {
-                                        totalDistance = getHealthDataValue(dataPoint, field);
-                                    }
-                                    getField(ACTIVE_ENERGY_BURNED) -> {
-                                        totalEnergyBurned = getHealthDataValue(dataPoint, field);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    val healthDataItems = hashMapOf(
-                            "value" to bucket.getEndTime(TimeUnit.MINUTES) - bucket.getStartTime(TimeUnit.MINUTES),
-                            "date_from" to bucket.getStartTime(TimeUnit.MILLISECONDS),
-                            "date_to" to bucket.getEndTime(TimeUnit.MILLISECONDS),
-                            "source_name" to sourceName,
-                            "source_id" to sourceId,
-                            "is_manual_entry" to isManualEntry,
-                            "workout_type" to bucket.activity.toLowerCase(),
-                            "total_steps" to totalSteps,
-                            "total_distance" to totalDistance,
-                            "total_energy_burned" to totalEnergyBurned
-                    )
-                    healthData.add(healthDataItems)
-                }
-                Handler(context!!.mainLooper).run { result.success(healthData) }
-            }
+            Handler(context!!.mainLooper).run { result.success(healthData) }
+        }
 
-  private fun workoutDataHandler(type: String, result: Result) =
+    private fun aggregateDataHandler(includeManualEntry: Boolean, result: Result) =
+        OnSuccessListener { response: DataReadResponse ->
+            val healthData = mutableListOf<HashMap<String, Any>>()
+            for(bucket in response.buckets) {
+                var sourceName:Any = ""
+                var sourceId:Any = ""
+                var isManualEntry:Any = false
+                var totalSteps:Any = 0
+                var totalDistance:Any = 0
+                var totalEnergyBurned:Any = 0
+                /// Fetch all data points for the specified DataType
+                for (dataSet in bucket.dataSets) {
+                    /// For each data point, extract the contents and send them to Flutter, along with date and unit.
+                    var dataPoints = dataSet.dataPoints
+                    if (!includeManualEntry) {
+                        dataPoints = dataPoints.filterIndexed { _, dataPoint ->
+                            !dataPoint.originalDataSource.streamName.contains("user_input")
+                        }
+                    }
+                    for (dataPoint in dataPoints) {
+                        sourceName = (dataPoint.originalDataSource.appPackageName
+                            ?: (dataPoint.originalDataSource.device?.model
+                                ?: ""))
+                        sourceId = dataPoint.originalDataSource.streamIdentifier
+                        isManualEntry = dataPoint.originalDataSource.streamName.contains("user_input")
+                        for (field in dataPoint.dataType.fields) {
+                            when(field) {
+                                getField(STEPS) -> {
+                                    totalSteps = getHealthDataValue(dataPoint, field);
+                                }
+                                getField(DISTANCE_DELTA) -> {
+                                    totalDistance = getHealthDataValue(dataPoint, field);
+                                }
+                                getField(ACTIVE_ENERGY_BURNED) -> {
+                                    totalEnergyBurned = getHealthDataValue(dataPoint, field);
+                                }
+                            }
+                        }
+                    }
+                }
+                val healthDataItems = hashMapOf(
+                    "value" to bucket.getEndTime(TimeUnit.MINUTES) - bucket.getStartTime(TimeUnit.MINUTES),
+                    "date_from" to bucket.getStartTime(TimeUnit.MILLISECONDS),
+                    "date_to" to bucket.getEndTime(TimeUnit.MILLISECONDS),
+                    "source_name" to sourceName,
+                    "source_id" to sourceId,
+                    "is_manual_entry" to isManualEntry,
+                    "workout_type" to bucket.activity.toLowerCase(),
+                    "total_steps" to totalSteps,
+                    "total_distance" to totalDistance,
+                    "total_energy_burned" to totalEnergyBurned
+                )
+                healthData.add(healthDataItems)
+            }
+            Handler(context!!.mainLooper).run { result.success(healthData) }
+        }
+
+    private fun workoutDataHandler(type: String, result: Result) =
         OnSuccessListener { response: SessionReadResponse ->
             val healthData: MutableList<Map<String, Any?>> = mutableListOf()
             for (session in response.sessions) {
@@ -1575,7 +1575,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 result.success(map.values.firstOrNull())
             }
         }
-  
+
     /// Disconnect Google fit
     private fun disconnect(call: MethodCall, result: Result) {
         if (activity == null) {
@@ -1588,16 +1588,16 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         val googleAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
         Fitness.getConfigClient(context, googleAccount).disableFit().continueWith {
             val signinOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                    .requestId()
-                    .requestEmail()
-                    .build()
+                .requestId()
+                .requestEmail()
+                .build()
             val googleSignInClient = GoogleSignIn.getClient(context, signinOption)
             googleSignInClient.signOut()
             result.success(true)
         }
     }
 
-  private fun getActivityType(type: String): String {
+    private fun getActivityType(type: String): String {
         return workoutTypeMap[type] ?: FitnessActivities.UNKNOWN
     }
 
@@ -1612,15 +1612,15 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             "revokePermissions" -> revokePermissions(call, result)
             "getData" -> getData(call, result)
             "getIntervalData" -> getIntervalData(call, result)
-      "writeData" -> writeData(call, result)
+            "writeData" -> writeData(call, result)
             "delete" -> delete(call, result)
             "getAggregateData" -> getAggregateData(call, result)
-      "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
+            "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
             "writeWorkoutData" -> writeWorkoutData(call, result)
             "writeBloodPressure" -> writeBloodPressure(call, result)
             "writeBloodOxygen" -> writeBloodOxygen(call, result)
             "disconnect" -> disconnect(call, result)
-      else -> result.notImplemented()
+            else -> result.notImplemented()
         }
     }
 
@@ -1853,11 +1853,14 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                             ),
                         )
                     }
-                // Filter sleep stages for requested stage
-                } else if (classType == SleepStageRecord::class) {
+                    // Filter sleep stages for requested stage
+                } else if (classType == SleepSessionRecord::class) {
                     for (rec in response.records) {
-                        if (rec is SleepStageRecord) {
-                            if (dataType == MapSleepStageToType[rec.stage]) {
+                        if (rec is SleepSessionRecord) {
+                            if (rec.stages.isNotEmpty() && dataType == MapSleepStageToType[rec.stages[0].stage]) {
+                                healthConnectData.addAll(convertRecord(rec, dataType))
+                            } else if(dataType == SLEEP_SESSION){
+                                /// Handle Sleep session with no sleep stages.
                                 healthConnectData.addAll(convertRecord(rec, dataType))
                             }
                         }
@@ -1903,12 +1906,12 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     }
 
                     val data = mapOf<String, Any>(
-                            "value" to (totalValue ?: 0),
-                            "date_from" to durationResult.startTime.toEpochMilli(),
-                            "date_to" to durationResult.endTime.toEpochMilli(),
-                            "source_name" to packageNames,
-                            "source_id" to "",
-                            "is_manual_entry" to packageNames.contains("user_input")
+                        "value" to (totalValue ?: 0),
+                        "date_from" to durationResult.startTime.toEpochMilli(),
+                        "date_to" to durationResult.endTime.toEpochMilli(),
+                        "source_name" to packageNames,
+                        "source_id" to "",
+                        "is_manual_entry" to packageNames.contains("user_input")
                     );
                     healthConnectData.add(data);
                 }
@@ -2056,18 +2059,19 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     "value" to ChronoUnit.MINUTES.between(record.startTime, record.endTime),
                     "source_id" to "",
                     "source_name" to metadata.dataOrigin.packageName,
+                    "stage" to if (record.stages.isNotEmpty()) record.stages[0] else SleepSessionRecord.STAGE_TYPE_UNKNOWN,
                 ),
             )
-            is SleepStageRecord -> return listOf(
-                mapOf<String, Any>(
-                    "stage" to record.stage,
-                    "value" to ChronoUnit.MINUTES.between(record.startTime, record.endTime),
-                    "date_from" to record.startTime.toEpochMilli(),
-                    "date_to" to record.endTime.toEpochMilli(),
-                    "source_id" to "",
-                    "source_name" to metadata.dataOrigin.packageName,
-                ),
-            )
+//            is SleepStageRecord -> return listOf(
+//                mapOf<String, Any>(
+//                    "stage" to record.stage,
+//                    "value" to ChronoUnit.MINUTES.between(record.startTime, record.endTime),
+//                    "date_from" to record.startTime.toEpochMilli(),
+//                    "date_to" to record.endTime.toEpochMilli(),
+//                    "source_id" to "",
+//                    "source_name" to metadata.dataOrigin.packageName,
+//                ),
+//            )
             is RestingHeartRateRecord -> return listOf(
                 mapOf<String, Any>(
                     "value" to record.beatsPerMinute,
@@ -2189,50 +2193,48 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 startZoneOffset = null,
                 endZoneOffset = null,
             )
-            SLEEP_ASLEEP -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_SLEEPING,
-            )
-            SLEEP_LIGHT -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_LIGHT,
-            )
-            SLEEP_DEEP -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_DEEP,
-            )
-            SLEEP_REM -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_REM,
-            )
-            SLEEP_OUT_OF_BED -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_OUT_OF_BED,
-            )
-            SLEEP_AWAKE -> SleepStageRecord(
-                startTime = Instant.ofEpochMilli(startTime),
-                endTime = Instant.ofEpochMilli(endTime),
-                startZoneOffset = null,
-                endZoneOffset = null,
-                stage = SleepStageRecord.STAGE_TYPE_AWAKE,
-            )
-
-
+//            SLEEP_ASLEEP -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_SLEEPING,
+//            )
+//            SLEEP_LIGHT -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_LIGHT,
+//            )
+//            SLEEP_DEEP -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_DEEP,
+//            )
+//            SLEEP_REM -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_REM,
+//            )
+//            SLEEP_OUT_OF_BED -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_OUT_OF_BED,
+//            )
+//            SLEEP_AWAKE -> SleepStageRecord(
+//                startTime = Instant.ofEpochMilli(startTime),
+//                endTime = Instant.ofEpochMilli(endTime),
+//                startZoneOffset = null,
+//                endZoneOffset = null,
+//                stage = SleepStageRecord.STAGE_TYPE_AWAKE,
+//            )
             SLEEP_SESSION -> SleepSessionRecord(
                 startTime = Instant.ofEpochMilli(startTime),
                 endTime = Instant.ofEpochMilli(endTime),
@@ -2422,12 +2424,18 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
         BLOOD_GLUCOSE to BloodGlucoseRecord::class,
         DISTANCE_DELTA to DistanceRecord::class,
         WATER to HydrationRecord::class,
-        SLEEP_ASLEEP to SleepStageRecord::class,
-        SLEEP_AWAKE to SleepStageRecord::class,
-        SLEEP_LIGHT to SleepStageRecord::class,
-        SLEEP_DEEP to SleepStageRecord::class,
-        SLEEP_REM to SleepStageRecord::class,
-        SLEEP_OUT_OF_BED to SleepStageRecord::class,
+//        SLEEP_ASLEEP to SleepStageRecord::class,
+//        SLEEP_AWAKE to SleepStageRecord::class,
+//        SLEEP_LIGHT to SleepStageRecord::class,
+//        SLEEP_DEEP to SleepStageRecord::class,
+//        SLEEP_REM to SleepStageRecord::class,
+//        SLEEP_OUT_OF_BED to SleepStageRecord::class,
+        SLEEP_ASLEEP to SleepSessionRecord::class,
+        SLEEP_AWAKE to SleepSessionRecord::class,
+        SLEEP_LIGHT to SleepSessionRecord::class,
+        SLEEP_DEEP to SleepSessionRecord::class,
+        SLEEP_REM to SleepSessionRecord::class,
+        SLEEP_OUT_OF_BED to SleepSessionRecord::class,
         SLEEP_SESSION to SleepSessionRecord::class,
         WORKOUT to ExerciseSessionRecord::class,
         RESTING_HEART_RATE to RestingHeartRateRecord::class,
