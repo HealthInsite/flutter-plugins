@@ -10,6 +10,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
