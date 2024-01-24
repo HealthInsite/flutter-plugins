@@ -1,3 +1,13 @@
+## 3.1.2
+
+- Upgrade to flutter version 3.2.0
+- Upgrade to `flutter_blue_plus: ^1.29.0`
+- Refactor of `MovisensService` to avoid late initialization problems.
+
+## 3.0.0
+
+- Upgrade to flutter version 3.0.0
+
 ## 2.0.0
 
 - Updated flutter version and Android AGP
@@ -16,7 +26,7 @@
 
 ## 1.0.0
 
-- Reimplentation of package to use direct bluetooth communication using `flutter_blue_plus` instead of Movisens libraries
+- Re-implementation of package to use direct Bluetooth communication using `flutter_blue_plus` instead of Movisens libraries
 
 ## 0.2.0
 
