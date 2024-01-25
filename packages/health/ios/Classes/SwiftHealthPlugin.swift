@@ -623,7 +623,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
                         "source_name": sample.sourceRevision.source.name,
                         "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
-          ]
+                    ]
                 }
                 DispatchQueue.main.async {
                     result(dictionaries)
@@ -635,15 +635,15 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                     samplesCategory = samplesCategory.filter { $0.value == 0 }
                 }
                 if dataTypeKey == self.SLEEP_ASLEEP_CORE {
-          samplesCategory = samplesCategory.filter { $0.value == 3 }
-        }
-        if dataTypeKey == self.SLEEP_ASLEEP_DEEP {
-            samplesCategory = samplesCategory.filter { $0.value == 4 }
-        }
-        if dataTypeKey == self.SLEEP_ASLEEP_REM {
-            samplesCategory = samplesCategory.filter { $0.value == 5 }
-        }
-        if dataTypeKey == self.SLEEP_AWAKE {
+                    samplesCategory = samplesCategory.filter { $0.value == 3 }
+                }
+                if dataTypeKey == self.SLEEP_ASLEEP_DEEP {
+                    samplesCategory = samplesCategory.filter { $0.value == 4 }
+                }
+                if dataTypeKey == self.SLEEP_ASLEEP_REM {
+                    samplesCategory = samplesCategory.filter { $0.value == 5 }
+                }
+                if dataTypeKey == self.SLEEP_AWAKE {
                     samplesCategory = samplesCategory.filter { $0.value == 2 }
                 }
                 if dataTypeKey == self.SLEEP_ASLEEP {
@@ -678,8 +678,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "date_to": Int(sample.endDate.timeIntervalSince1970 * 1000),
                         "source_id": sample.sourceRevision.source.bundleIdentifier,
                         "source_name": sample.sourceRevision.source.name,
-                      "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
-          ]
+                        "is_manual_entry": sample.metadata?[HKMetadataKeyWasUserEntered] != nil
+                    ]
                 }
                 DispatchQueue.main.async {
                     result(categories)
@@ -705,7 +705,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         "workout_type": self.getWorkoutType(type: sample.workoutActivityType),
                         "total_distance": sample.totalDistance != nil ? Int(sample.totalDistance!.doubleValue(for: HKUnit.meter())) : 0,
                         "total_energy_burned": sample.totalEnergyBurned != nil ? Int(sample.totalEnergyBurned!.doubleValue(for: HKUnit.kilocalorie())) : 0
-          ]
+                    ]
                 }
                 
                 DispatchQueue.main.async {
