@@ -2213,7 +2213,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 ),
             )
 //
-            is SleepStageRecord -> return listOf(
+//            is SleepStageRecord -> return listOf(
 //                mapOf<String, Any>(
 //                    "stage" to record.stage,
 //                    "value" to ChronoUnit.MINUTES.between(record.startTime, record.endTime),
