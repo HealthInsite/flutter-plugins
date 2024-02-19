@@ -898,18 +898,24 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             print("Self is nil during enumeration")
             return
           }
-          if let quantity = statisticData.sumQuantity(),
-              let dataUnitKey = dataUnitKey,
-              let unit = self.unitDict[dataUnitKey] {
-              let dict = [
-                  "value": quantity.doubleValue(for: unit),
-                  "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
-                  "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
-                  "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
-                  "source_name": statisticData.sources?.first?.name ?? ""
-              ]
-              dictionaries.append(dict)
+
+          do {
+            if let quantity = statisticData.sumQuantity(),
+                let dataUnitKey = dataUnitKey,
+                let unit = self.unitDict[dataUnitKey] {
+                let dict = [
+                    "value": quantity.doubleValue(for: unit),
+                    "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
+                    "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
+                    "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
+                    "source_name": statisticData.sources?.first?.name ?? ""
+                ]
+                dictionaries.append(dict)
             }
+          }
+          catch {
+            print("Error during collection.enumeration: \(error)")                    
+          }
         }
         DispatchQueue.main.async {
           result(dictionaries)
