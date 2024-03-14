@@ -154,7 +154,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         else if (call.method.elementsEqual("getIntervalData")){
             getIntervalData(call: call, result: result)
         }
-
+        
         /// Handle getTotalStepsInInterval
         else if call.method.elementsEqual("getTotalStepsInInterval") {
             getTotalStepsInInterval(call: call, result: result)
@@ -195,13 +195,13 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             try! delete(call: call, result: result)
         }
         
-      /// Disconnect
-    else if (call.method.elementsEqual("disconnect")){
-        // Do nothing.
-        result(true)
+        /// Disconnect
+        else if (call.method.elementsEqual("disconnect")){
+            // Do nothing.
+            result(true)
+        }
+        
     }
-
-  }
     
     func checkIfHealthDataAvailable(call: FlutterMethodCall, result: @escaping FlutterResult) {
         result(HKHealthStore.isHealthDataAvailable())
@@ -450,7 +450,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         }
         let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
         let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
-            
+        
         var mealTypeString = mealType ?? "UNKNOWN"
         var metadata = ["HKFoodMeal": "\(mealTypeString)"]
         
@@ -587,7 +587,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
         let limit = (arguments?["limit"] as? Int) ?? HKObjectQueryNoLimit
         let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
-
+        
         // Convert dates from milliseconds to Date()
         let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
         let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
@@ -601,8 +601,8 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         var predicate = HKQuery.predicateForSamples(
             withStart: dateFrom, end: dateTo, options: .strictStartDate)
         if (!includeManualEntry) {
-          let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
-          predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
+            let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
+            predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
         }
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         
@@ -839,91 +839,91 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         ]
     }
     
-  func getIntervalData(call: FlutterMethodCall, result: @escaping FlutterResult) {
-      let arguments = call.arguments as? NSDictionary
-      let dataTypeKey = (arguments?["dataTypeKey"] as? String) ?? "DEFAULT"
-      let dataUnitKey = (arguments?["dataUnitKey"] as? String)
-      let startDate = (arguments?["startTime"] as? NSNumber) ?? 0
-      let endDate = (arguments?["endTime"] as? NSNumber) ?? 0
-      let intervalInSecond = (arguments?["interval"] as? Int) ?? 1
-      let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
-
-      // Set interval in seconds.
-      var interval = DateComponents()
-      interval.second = intervalInSecond
-
-      // Convert dates from milliseconds to Date()
-      let dateFrom = Date(timeIntervalSince1970: startDate.doubleValue / 1000)
-      let dateTo = Date(timeIntervalSince1970: endDate.doubleValue / 1000)
+    func getIntervalData(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let dataTypeKey = (arguments?["dataTypeKey"] as? String) ?? "DEFAULT"
+        let dataUnitKey = (arguments?["dataUnitKey"] as? String)
+        let startDate = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endDate = (arguments?["endTime"] as? NSNumber) ?? 0
+        let intervalInSecond = (arguments?["interval"] as? Int) ?? 1
+        let includeManualEntry = (arguments?["includeManualEntry"] as? Bool) ?? true
         
-      let quantityType: HKQuantityType! = dataQuantityTypesDict[dataTypeKey]
-      var predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: [])
-      if (!includeManualEntry) {
-          let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
-          predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
-      }
-
-      let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
+        // Set interval in seconds.
+        var interval = DateComponents()
+        interval.second = intervalInSecond
         
-      query.initialResultsHandler = { 
-        [weak self] _, statisticCollectionOrNil, error in
-        guard let self = self else {
-          // Handle the case where self became nil.
-          print("Self is nil")
-          return
+        // Convert dates from milliseconds to Date()
+        let dateFrom = Date(timeIntervalSince1970: startDate.doubleValue / 1000)
+        let dateTo = Date(timeIntervalSince1970: endDate.doubleValue / 1000)
+        
+        let quantityType: HKQuantityType! = dataQuantityTypesDict[dataTypeKey]
+        var predicate = HKQuery.predicateForSamples(withStart: dateFrom, end: dateTo, options: [])
+        if (!includeManualEntry) {
+            let manualPredicate = NSPredicate(format: "metadata.%K != YES", HKMetadataKeyWasUserEntered)
+            predicate = NSCompoundPredicate(type: .and, subpredicates: [predicate, manualPredicate])
         }
-
-        // Error detected.
-        if let error = error {
-          print("Query error: \(error.localizedDescription)")
-          DispatchQueue.main.async {
-            result(nil)
-          }
-          return
-        }
-
-        guard let collection = statisticCollectionOrNil as? HKStatisticsCollection else {
-          print("Unexpected result from query")
-          DispatchQueue.main.async {
-            result(nil)
-          }
-          return
-        }
-
-        var dictionaries = [[String: Any]]()
-        collection.enumerateStatistics(from: dateFrom, to: dateTo) {
-          [weak self] statisticData, _ in
-          guard let self = self else {
-            // Handle the case where self became nil.
-            print("Self is nil during enumeration")
-            return
-          }
-
-          do {
-            if let quantity = statisticData.sumQuantity(),
-                let dataUnitKey = dataUnitKey,
-                let unit = self.unitDict[dataUnitKey] {
-                let dict = [
-                    "value": quantity.doubleValue(for: unit),
-                    "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
-                    "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
-                    "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
-                    "source_name": statisticData.sources?.first?.name ?? ""
-                ]
-                dictionaries.append(dict)
+        
+        let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: [.cumulativeSum, .separateBySource], anchorDate: dateFrom, intervalComponents: interval)
+        
+        query.initialResultsHandler = {
+            [weak self] _, statisticCollectionOrNil, error in
+            guard let self = self else {
+                // Handle the case where self became nil.
+                print("Self is nil")
+                return
             }
-          }
-          catch {
-            print("Error during collection.enumeration: \(error)")                    
-          }
+            
+            // Error detected.
+            if let error = error {
+                print("Query error: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+            
+            guard let collection = statisticCollectionOrNil as? HKStatisticsCollection else {
+                print("Unexpected result from query")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+            
+            var dictionaries = [[String: Any]]()
+            collection.enumerateStatistics(from: dateFrom, to: dateTo) {
+                [weak self] statisticData, _ in
+                guard let self = self else {
+                    // Handle the case where self became nil.
+                    print("Self is nil during enumeration")
+                    return
+                }
+                
+                do {
+                    if let quantity = statisticData.sumQuantity(),
+                       let dataUnitKey = dataUnitKey,
+                       let unit = self.unitDict[dataUnitKey] {
+                        let dict = [
+                            "value": quantity.doubleValue(for: unit),
+                            "date_from": Int(statisticData.startDate.timeIntervalSince1970 * 1000),
+                            "date_to": Int(statisticData.endDate.timeIntervalSince1970 * 1000),
+                            "source_id": statisticData.sources?.first?.bundleIdentifier ?? "",
+                            "source_name": statisticData.sources?.first?.name ?? ""
+                        ]
+                        dictionaries.append(dict)
+                    }
+                }
+                catch {
+                    print("Error during collection.enumeration: \(error)")
+                }
+            }
+            DispatchQueue.main.async {
+                result(dictionaries)
+            }
         }
-        DispatchQueue.main.async {
-          result(dictionaries)
-        }
+        HKHealthStore().execute(query)
     }
-      HKHealthStore().execute(query)
-  }
-
+    
     func getTotalStepsInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
@@ -1184,41 +1184,41 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             healthDataTypes = Array(dataTypesDict.values)
         }
         
-    // Set up iOS 11 specific types (ordinary health data quantity types)
-    if #available(iOS 11.0, *) {
-      dataQuantityTypesDict[ACTIVE_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
-      dataQuantityTypesDict[BASAL_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned)!
-      dataQuantityTypesDict[BLOOD_GLUCOSE] = HKQuantityType.quantityType(forIdentifier: .bloodGlucose)!
-      dataQuantityTypesDict[BLOOD_OXYGEN] = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)!
-      dataQuantityTypesDict[BLOOD_PRESSURE_DIASTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureDiastolic)!
-      dataQuantityTypesDict[BLOOD_PRESSURE_SYSTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureSystolic)!
-      dataQuantityTypesDict[BODY_FAT_PERCENTAGE] = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage)!
-      dataQuantityTypesDict[BODY_MASS_INDEX] = HKQuantityType.quantityType(forIdentifier: .bodyMassIndex)!
-      dataQuantityTypesDict[BODY_TEMPERATURE] = HKQuantityType.quantityType(forIdentifier: .bodyTemperature)!
-      dataQuantityTypesDict[DIETARY_CARBS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryCarbohydrates)!
-      dataQuantityTypesDict[DIETARY_ENERGY_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
-      dataQuantityTypesDict[DIETARY_FATS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryFatTotal)!
-      dataQuantityTypesDict[DIETARY_PROTEIN_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryProtein)!
-      dataQuantityTypesDict[ELECTRODERMAL_ACTIVITY] = HKQuantityType.quantityType(forIdentifier: .electrodermalActivity)!
-      dataQuantityTypesDict[FORCED_EXPIRATORY_VOLUME] = HKQuantityType.quantityType(forIdentifier: .forcedExpiratoryVolume1)!
-      dataQuantityTypesDict[HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .heartRate)!
-      dataQuantityTypesDict[HEART_RATE_VARIABILITY_SDNN] = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
-      dataQuantityTypesDict[HEIGHT] = HKQuantityType.quantityType(forIdentifier: .height)!
-      dataQuantityTypesDict[RESTING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .restingHeartRate)!
-      dataQuantityTypesDict[STEPS] = HKQuantityType.quantityType(forIdentifier: .stepCount)!
-      dataQuantityTypesDict[WAIST_CIRCUMFERENCE] = HKQuantityType.quantityType(forIdentifier: .waistCircumference)!
-      dataQuantityTypesDict[WALKING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .walkingHeartRateAverage)!
-      dataQuantityTypesDict[WEIGHT] = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
-      dataQuantityTypesDict[DISTANCE_WALKING_RUNNING] = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
-      dataQuantityTypesDict[DISTANCE_SWIMMING] = HKQuantityType.quantityType(forIdentifier: .distanceSwimming)!
-      dataQuantityTypesDict[DISTANCE_CYCLING] = HKQuantityType.quantityType(forIdentifier: .distanceCycling)!          
-      dataQuantityTypesDict[FLIGHTS_CLIMBED] = HKQuantityType.quantityType(forIdentifier: .flightsClimbed)!
-      dataQuantityTypesDict[WATER] = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
-
-      healthDataQuantityTypes = Array(dataQuantityTypesDict.values)
-    }
-
-    // Set up heart rate data types specific to the apple watch, requires iOS 12
+        // Set up iOS 11 specific types (ordinary health data quantity types)
+        if #available(iOS 11.0, *) {
+            dataQuantityTypesDict[ACTIVE_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+            dataQuantityTypesDict[BASAL_ENERGY_BURNED] = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned)!
+            dataQuantityTypesDict[BLOOD_GLUCOSE] = HKQuantityType.quantityType(forIdentifier: .bloodGlucose)!
+            dataQuantityTypesDict[BLOOD_OXYGEN] = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)!
+            dataQuantityTypesDict[BLOOD_PRESSURE_DIASTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureDiastolic)!
+            dataQuantityTypesDict[BLOOD_PRESSURE_SYSTOLIC] = HKQuantityType.quantityType(forIdentifier: .bloodPressureSystolic)!
+            dataQuantityTypesDict[BODY_FAT_PERCENTAGE] = HKQuantityType.quantityType(forIdentifier: .bodyFatPercentage)!
+            dataQuantityTypesDict[BODY_MASS_INDEX] = HKQuantityType.quantityType(forIdentifier: .bodyMassIndex)!
+            dataQuantityTypesDict[BODY_TEMPERATURE] = HKQuantityType.quantityType(forIdentifier: .bodyTemperature)!
+            dataQuantityTypesDict[DIETARY_CARBS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryCarbohydrates)!
+            dataQuantityTypesDict[DIETARY_ENERGY_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+            dataQuantityTypesDict[DIETARY_FATS_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryFatTotal)!
+            dataQuantityTypesDict[DIETARY_PROTEIN_CONSUMED] = HKQuantityType.quantityType(forIdentifier: .dietaryProtein)!
+            dataQuantityTypesDict[ELECTRODERMAL_ACTIVITY] = HKQuantityType.quantityType(forIdentifier: .electrodermalActivity)!
+            dataQuantityTypesDict[FORCED_EXPIRATORY_VOLUME] = HKQuantityType.quantityType(forIdentifier: .forcedExpiratoryVolume1)!
+            dataQuantityTypesDict[HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+            dataQuantityTypesDict[HEART_RATE_VARIABILITY_SDNN] = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!
+            dataQuantityTypesDict[HEIGHT] = HKQuantityType.quantityType(forIdentifier: .height)!
+            dataQuantityTypesDict[RESTING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .restingHeartRate)!
+            dataQuantityTypesDict[STEPS] = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+            dataQuantityTypesDict[WAIST_CIRCUMFERENCE] = HKQuantityType.quantityType(forIdentifier: .waistCircumference)!
+            dataQuantityTypesDict[WALKING_HEART_RATE] = HKQuantityType.quantityType(forIdentifier: .walkingHeartRateAverage)!
+            dataQuantityTypesDict[WEIGHT] = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+            dataQuantityTypesDict[DISTANCE_WALKING_RUNNING] = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+            dataQuantityTypesDict[DISTANCE_SWIMMING] = HKQuantityType.quantityType(forIdentifier: .distanceSwimming)!
+            dataQuantityTypesDict[DISTANCE_CYCLING] = HKQuantityType.quantityType(forIdentifier: .distanceCycling)!
+            dataQuantityTypesDict[FLIGHTS_CLIMBED] = HKQuantityType.quantityType(forIdentifier: .flightsClimbed)!
+            dataQuantityTypesDict[WATER] = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+            
+            healthDataQuantityTypes = Array(dataQuantityTypesDict.values)
+        }
+        
+        // Set up heart rate data types specific to the apple watch, requires iOS 12
         if #available(iOS 12.2, *) {
             dataTypesDict[HIGH_HEART_RATE_EVENT] = HKSampleType.categoryType(
                 forIdentifier: .highHeartRateEvent)!
@@ -1262,159 +1262,159 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         allDataTypes = Set(heartRateEventTypes + healthDataTypes)
         allDataTypes = allDataTypes.union(headacheType)
     }
-
-  func getWorkoutType(type: HKWorkoutActivityType) -> String {
-    switch type {
-      case .americanFootball:
-        return "americanFootball"
-      case .archery:
-        return "archery"
-      case .australianFootball:
-        return "australianFootball"
-      case .badminton:
-        return "badminton"
-      case .baseball:
-        return "baseball"
-      case .basketball:
-        return "basketball"
-      case .bowling:
-        return "bowling"
-      case .boxing:
-        return "boxing"
-      case .climbing:
-        return "climbing"
-      case .cricket:
-        return "cricket"
-      case .crossTraining:
-        return "crossTraining"
-      case .curling:
-        return "curling"
-      case .cycling:
-        return "cycling"
-      case .dance:
-        return "dance"
-      case .danceInspiredTraining:
-        return "danceInspiredTraining"
-      case .elliptical:
-        return "elliptical"
-      case .equestrianSports:
-        return "equestrianSports"
-      case .fencing:
-        return "fencing"
-      case .fishing:
-        return "fishing"
-      case .functionalStrengthTraining:
-        return "functionalStrengthTraining"
-      case .golf:
-        return "golf"
-      case .gymnastics:
-        return "gymnastics"
-      case .handball:
-        return "handball"
-      case .hiking:
-        return "hiking"
-      case .hockey:
-        return "hockey"
-      case .hunting:
-        return "hunting"
-      case .lacrosse:
-        return "lacrosse"
-      case .martialArts:
-        return "martialArts"
-      case .mindAndBody:
-        return "mindAndBody"
-      case .mixedMetabolicCardioTraining:
-        return "mixedMetabolicCardioTraining"
-      case .paddleSports:
-        return "paddleSports"
-      case .play:
-        return "play"
-      case .preparationAndRecovery:
-        return "preparationAndRecovery"
-      case .racquetball:
-        return "racquetball"
-      case .rowing:
-        return "rowing"
-      case .rugby:
-        return "rugby"
-      case .running:
-        return "running"
-      case .sailing:
-        return "sailing"
-      case .skatingSports:
-        return "skatingSports"
-      case .snowSports:
-        return "snowSports"
-      case .soccer:
-        return "soccer"
-      case .softball:
-        return "softball"
-      case .squash:
-        return "squash"
-      case .stairClimbing:
-        return "stairClimbing"
-      case .surfingSports:
-        return "surfingSports"
-      case .swimming:
-        return "swimming"
-      case .tableTennis:
-        return "tableTennis"
-      case .tennis:
-        return "tennis"
-      case .trackAndField:
-        return "trackAndField"
-      case .traditionalStrengthTraining:
-        return "traditionalStrengthTraining"
-      case .volleyball:
-        return "volleyball"
-      case .walking:
-        return "walking"
-      case .waterFitness:
-        return "waterFitness"
-      case .waterPolo:
-        return "waterPolo"
-      case .waterSports:
-        return "waterSports"
-      case .wrestling:
-        return "wrestling"
-      case .yoga:
-        return "yoga"
-      case .barre:
-        return "barre"
-      case .coreTraining:
-        return "coreTraining"
-      case .crossCountrySkiing:
-        return "crossCountrySkiing"
-      case .downhillSkiing:
-        return "downhillSkiing"
-      case .flexibility:
-        return "flexibility"
-      case .highIntensityIntervalTraining:
-        return "highIntensityIntervalTraining"
-      case .jumpRope:
-        return "jumpRope"
-      case .kickboxing:
-        return "kickboxing"
-      case .pilates:
-        return "pilates"
-      case .snowboarding:
-        return "snowboarding"
-      case .stairs:
-        return "stairs"
-      case .stepTraining:
-        return "stepTraining"
-      case .wheelchairWalkPace:
-        return "wheelchairWalkPace"
-      case .wheelchairRunPace:
-        return "wheelchairRunPace"
-      case .taiChi:
-        return "taiChi"
-      case .mixedCardio:
-        return "mixedCardio"
-      case .handCycling:
-        return "handCycling"
-      default:
-        return "other"
+    
+    func getWorkoutType(type: HKWorkoutActivityType) -> String {
+        switch type {
+        case .americanFootball:
+            return "americanFootball"
+        case .archery:
+            return "archery"
+        case .australianFootball:
+            return "australianFootball"
+        case .badminton:
+            return "badminton"
+        case .baseball:
+            return "baseball"
+        case .basketball:
+            return "basketball"
+        case .bowling:
+            return "bowling"
+        case .boxing:
+            return "boxing"
+        case .climbing:
+            return "climbing"
+        case .cricket:
+            return "cricket"
+        case .crossTraining:
+            return "crossTraining"
+        case .curling:
+            return "curling"
+        case .cycling:
+            return "cycling"
+        case .dance:
+            return "dance"
+        case .danceInspiredTraining:
+            return "danceInspiredTraining"
+        case .elliptical:
+            return "elliptical"
+        case .equestrianSports:
+            return "equestrianSports"
+        case .fencing:
+            return "fencing"
+        case .fishing:
+            return "fishing"
+        case .functionalStrengthTraining:
+            return "functionalStrengthTraining"
+        case .golf:
+            return "golf"
+        case .gymnastics:
+            return "gymnastics"
+        case .handball:
+            return "handball"
+        case .hiking:
+            return "hiking"
+        case .hockey:
+            return "hockey"
+        case .hunting:
+            return "hunting"
+        case .lacrosse:
+            return "lacrosse"
+        case .martialArts:
+            return "martialArts"
+        case .mindAndBody:
+            return "mindAndBody"
+        case .mixedMetabolicCardioTraining:
+            return "mixedMetabolicCardioTraining"
+        case .paddleSports:
+            return "paddleSports"
+        case .play:
+            return "play"
+        case .preparationAndRecovery:
+            return "preparationAndRecovery"
+        case .racquetball:
+            return "racquetball"
+        case .rowing:
+            return "rowing"
+        case .rugby:
+            return "rugby"
+        case .running:
+            return "running"
+        case .sailing:
+            return "sailing"
+        case .skatingSports:
+            return "skatingSports"
+        case .snowSports:
+            return "snowSports"
+        case .soccer:
+            return "soccer"
+        case .softball:
+            return "softball"
+        case .squash:
+            return "squash"
+        case .stairClimbing:
+            return "stairClimbing"
+        case .surfingSports:
+            return "surfingSports"
+        case .swimming:
+            return "swimming"
+        case .tableTennis:
+            return "tableTennis"
+        case .tennis:
+            return "tennis"
+        case .trackAndField:
+            return "trackAndField"
+        case .traditionalStrengthTraining:
+            return "traditionalStrengthTraining"
+        case .volleyball:
+            return "volleyball"
+        case .walking:
+            return "walking"
+        case .waterFitness:
+            return "waterFitness"
+        case .waterPolo:
+            return "waterPolo"
+        case .waterSports:
+            return "waterSports"
+        case .wrestling:
+            return "wrestling"
+        case .yoga:
+            return "yoga"
+        case .barre:
+            return "barre"
+        case .coreTraining:
+            return "coreTraining"
+        case .crossCountrySkiing:
+            return "crossCountrySkiing"
+        case .downhillSkiing:
+            return "downhillSkiing"
+        case .flexibility:
+            return "flexibility"
+        case .highIntensityIntervalTraining:
+            return "highIntensityIntervalTraining"
+        case .jumpRope:
+            return "jumpRope"
+        case .kickboxing:
+            return "kickboxing"
+        case .pilates:
+            return "pilates"
+        case .snowboarding:
+            return "snowboarding"
+        case .stairs:
+            return "stairs"
+        case .stepTraining:
+            return "stepTraining"
+        case .wheelchairWalkPace:
+            return "wheelchairWalkPace"
+        case .wheelchairRunPace:
+            return "wheelchairRunPace"
+        case .taiChi:
+            return "taiChi"
+        case .mixedCardio:
+            return "mixedCardio"
+        case .handCycling:
+            return "handCycling"
+        default:
+            return "other"
+        }
     }
-  }
 }
