@@ -870,6 +870,9 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             guard let self = self else {
                 // Handle the case where self became nil.
                 print("Self is nil")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
                 return
             }
             
@@ -912,8 +915,7 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                         ]
                         dictionaries.append(dict)
                     }
-                }
-                catch {
+                } catch {
                     print("Error during collection.enumeration: \(error)")
                 }
             }
