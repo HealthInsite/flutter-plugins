@@ -1226,12 +1226,12 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     "date_from" to dataPoint.getStartTime(TimeUnit.MILLISECONDS),
                     "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
                     "source_name" to (
-                            dataPoint.originalDataSource.appPackageName
-                                ?: (
-                                        dataPoint.originalDataSource.device?.model
-                                            ?: ""
-                                        )
-                            ),
+                        dataPoint.originalDataSource.appPackageName
+                            ?: (
+                                dataPoint.originalDataSource.device?.model
+                                    ?: ""
+                                )
+                        ),
                     "source_id" to dataPoint.originalDataSource.streamIdentifier,
                 )
             }
@@ -1285,12 +1285,12 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                                             "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
                                             "unit" to "MINUTES",
                                             "source_name" to (
-                                                    dataPoint.originalDataSource.appPackageName
-                                                        ?: (
-                                                                dataPoint.originalDataSource.device?.model
-                                                                    ?: "unknown"
-                                                                )
-                                                    ),
+                                                dataPoint.originalDataSource.appPackageName
+                                                    ?: (
+                                                        dataPoint.originalDataSource.device?.model
+                                                            ?: "unknown"
+                                                        )
+                                                ),
                                             "source_id" to dataPoint.originalDataSource.streamIdentifier,
                                         ),
                                     )
@@ -1328,12 +1328,12 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                                         "date_to" to dataPoint.getEndTime(TimeUnit.MILLISECONDS),
                                         "unit" to "MINUTES",
                                         "source_name" to (
-                                                dataPoint.originalDataSource.appPackageName
-                                                    ?: (
-                                                            dataPoint.originalDataSource.device?.model
-                                                                ?: "unknown"
-                                                            )
-                                                ),
+                                            dataPoint.originalDataSource.appPackageName
+                                                ?: (
+                                                    dataPoint.originalDataSource.device?.model
+                                                        ?: "unknown"
+                                                    )
+                                            ),
                                         "source_id" to dataPoint.originalDataSource.streamIdentifier,
                                     ),
                                 )
@@ -1462,9 +1462,9 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 healthData.add(
                     hashMapOf(
                         "workoutActivityType" to (
-                                workoutTypeMap.filterValues { it == session.activity }.keys.firstOrNull()
-                                    ?: "OTHER"
-                                ),
+                            workoutTypeMap.filterValues { it == session.activity }.keys.firstOrNull()
+                                ?: "OTHER"
+                            ),
                         "totalEnergyBurned" to if (totalEnergyBurned == 0.0) null else totalEnergyBurned,
                         "totalEnergyBurnedUnit" to "KILOCALORIE",
                         "totalDistance" to if (totalDistance == 0.0) null else totalDistance,
@@ -1977,9 +1977,9 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                             // mapOf(
                             mapOf<String, Any?>(
                                 "workoutActivityType" to (
-                                        workoutTypeMapHealthConnect.filterValues { it == record.exerciseType }.keys.firstOrNull()
-                                            ?: "OTHER"
-                                        ),
+                                    workoutTypeMapHealthConnect.filterValues { it == record.exerciseType }.keys.firstOrNull()
+                                        ?: "OTHER"
+                                    ),
                                 "totalDistance" to if (totalDistance == 0.0) null else totalDistance,
                                 "totalDistanceUnit" to "METER",
                                 "totalEnergyBurned" to if (totalEnergyBurned == 0.0) null else totalEnergyBurned,
@@ -1998,11 +1998,19 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 } else if (classType == SleepSessionRecord::class) {
                     for (rec in response.records) {
                         if (rec is SleepSessionRecord) {
-                            if (rec.stages.isNotEmpty() && dataType == MapSleepStageToType[rec.stages[0].stage]) {
+                            if (dataType == SLEEP_SESSION) {
                                 healthConnectData.addAll(convertRecord(rec, dataType))
-                            } else if(dataType == SLEEP_SESSION){
-                                /// Handle Sleep session with no sleep stages.
-                                healthConnectData.addAll(convertRecord(rec, dataType))
+                            } else {
+                                for (recStage in rec.stages) {
+                                    if (dataType == MapSleepStageToType[recStage.stage]) {
+                                        healthConnectData.addAll(
+                                            convertRecordStage(
+                                                recStage, dataType,
+                                                rec.metadata.dataOrigin.packageName
+                                            )
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -2014,6 +2022,20 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             }
             Handler(context!!.mainLooper).run { result.success(healthConnectData) }
         }
+    }
+
+    fun convertRecordStage(stage: SleepSessionRecord.Stage, dataType: String, sourceName: String):
+        List<Map<String, Any>> {
+        return listOf(
+            mapOf<String, Any>(
+                "stage" to stage.stage,
+                "value" to ChronoUnit.MINUTES.between(stage.startTime, stage.endTime),
+                "date_from" to stage.startTime.toEpochMilli(),
+                "date_to" to stage.endTime.toEpochMilli(),
+                "source_id" to "",
+                "source_name" to sourceName,
+            ),
+        );
     }
 
     fun getAggregateHCData(call: MethodCall, result: Result) {
@@ -2209,7 +2231,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                     "value" to ChronoUnit.MINUTES.between(record.startTime, record.endTime),
                     "source_id" to "",
                     "source_name" to metadata.dataOrigin.packageName,
-                    "stage" to if (record.stages.isNotEmpty()) record.stages[0] else SleepSessionRecord.STAGE_TYPE_UNKNOWN,
                 ),
             )
 //
