@@ -59,8 +59,10 @@ class Health {
         : (await _deviceInfo.iosInfo).identifierForVendor;
 
     _useHealthConnectIfAvailable = useHealthConnectIfAvailable;
-    if (_useHealthConnectIfAvailable) {
-      await _channel.invokeMethod('useHealthConnectIfAvailable');
+    if (Platform.isAndroid) {
+      await _channel.invokeMethod('useHealthConnectIfAvailable', {
+        "useHealthConnect": useHealthConnectIfAvailable,
+      });
     }
   }
 
