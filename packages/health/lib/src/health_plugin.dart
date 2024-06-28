@@ -59,8 +59,10 @@ class Health {
         : (await _deviceInfo.iosInfo).identifierForVendor;
 
     _useHealthConnectIfAvailable = useHealthConnectIfAvailable;
-    if (_useHealthConnectIfAvailable) {
-      await _channel.invokeMethod('useHealthConnectIfAvailable');
+    if (Platform.isAndroid) {
+      await _channel.invokeMethod('useHealthConnectIfAvailable', {
+        "useHealthConnect": useHealthConnectIfAvailable,
+      });
     }
   }
 
@@ -842,10 +844,14 @@ class Health {
   Future<int?> getTotalStepsInInterval(
     DateTime startTime,
     DateTime endTime,
+    {
+      bool includeManualEntry = true
+    }
   ) async {
     final args = <String, dynamic>{
       'startTime': startTime.millisecondsSinceEpoch,
-      'endTime': endTime.millisecondsSinceEpoch
+      'endTime': endTime.millisecondsSinceEpoch,
+      'includeManualEntry': includeManualEntry
     };
     final stepsCount = await _channel.invokeMethod<int?>(
       'getTotalStepsInInterval',
